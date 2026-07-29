@@ -1,0 +1,33 @@
+[package]
+name = "juicebox"
+version = "1.0.0"
+edition = "2021"
+authors = ["juiceydev"]
+license = "MIT"
+
+[dependencies]
+tokio = { version = "1", features = ["process", "rt-multi-thread", "macros", "signal"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1.0"
+
+[workspace]
+resolver = "2"
+members = [
+    "juiceback",
+    "juicehost",
+    "juicefront",
+    "juiceutils",
+]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+debug-assertions = false
+
+[profile.release.package."*"]
+opt-level = 3
+codegen-units = 1
