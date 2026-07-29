@@ -23,3 +23,6 @@ Thumbs.db
 # Environment
 .env
 .env.local
+delta.db
+quic-cert.der
+quic-cert.key
