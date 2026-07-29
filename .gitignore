@@ -1,0 +1,25 @@
+/target/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
