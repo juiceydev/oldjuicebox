@@ -3,7 +3,7 @@ name = "juicebox"
 version = "1.0.0"
 edition = "2021"
 authors = ["juiceydev"]
-license = "GPL-3.0-only"
+license = "GPL-3.0-or-later"
 
 [dependencies]
 tokio = { version = "1", features = ["process", "rt-multi-thread", "macros", "signal"] }
