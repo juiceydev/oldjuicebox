@@ -1,0 +1,12 @@
+[submodule "juiceback"]
+	path = juiceback
+	url = https://github.com/juiceboxdev/juiceback.git
+[submodule "juicehost"]
+	path = juicehost
+	url = https://github.com/juiceboxdev/juicehost.git
+[submodule "juicefront"]
+	path = juicefront
+	url = https://github.com/juiceboxdev/juicefront.git
+[submodule "juiceutils"]
+	path = juiceutils
+	url = https://github.com/juiceboxdev/juiceutils.git
