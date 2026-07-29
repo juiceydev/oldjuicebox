@@ -34,9 +34,9 @@ cargo run --package juicefront --release
 
 ## License
 
-GPL-3.0-only. See [LICENSE](LICENSE).
+GPL-3.0-or-later. See [LICENSE](LICENSE).
 
-juicebox-plus and juicepipe are LGPL-3.0-or-later.
+juicebox-plus and juicepipe are also LGPL-3.0-or-later.
 
 ## Contact
 
