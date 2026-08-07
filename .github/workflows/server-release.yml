@@ -85,7 +85,7 @@ jobs:
       - name: Package binary tarballs
         run: |
           VERSION=${{ needs.build-ui.outputs.version }}
-          for name in juicebox juiceback juicehost juicefront juicefetch; do
+          for name in juicebox juiceback juicehost juicefront; do
             tar -czf ${name}-${VERSION}-linux-${{ matrix.arch }}.tar.gz -C target/release ${name}
             sha256sum ${name}-${VERSION}-linux-${{ matrix.arch }}.tar.gz \
               > ${name}-${VERSION}-linux-${{ matrix.arch }}.tar.gz.sha256
