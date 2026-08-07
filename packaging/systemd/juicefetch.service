@@ -1,0 +1,15 @@
+[Unit]
+Description=Juicebox² autonomous updater (juicefetch)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/lib/juicebox
+Environment=JUICEFETCH_ROOT=/var/lib/juicebox
+ExecStart=/var/lib/juicebox/current/bin/juicefetch
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

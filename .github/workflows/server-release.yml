@@ -1,0 +1,112 @@
+name: Build & release Juicebox server
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-ui:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Version
+        id: version
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install bun
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+
+      - name: Build frontend (Astro)
+        working-directory: juicefront/ui
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Bundle server entry (self-contained, no node_modules)
+        working-directory: juicefront/ui
+        run: |
+          bun build dist/server/entry.mjs --outfile dist/server/entry.bundle.mjs --format=esm --target=node
+
+      - name: Package UI tarball
+        run: |
+          tar -czf juicefront-ui-${{ steps.version.outputs.version }}.tar.gz -C juicefront/ui dist server.mjs
+          sha256sum juicefront-ui-${{ steps.version.outputs.version }}.tar.gz \
+            > juicefront-ui-${{ steps.version.outputs.version }}.tar.gz.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui
+          path: juicefront-ui-*.tar.gz*
+
+  build-linux:
+    needs: build-ui
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libssl-dev
+
+      - name: Build binaries
+        run: cargo build --release --workspace
+
+      - name: Package binary tarballs
+        run: |
+          VERSION=${{ needs.build-ui.outputs.version }}
+          for name in juicebox juiceback juicehost juicefront juicefetch; do
+            tar -czf ${name}-${VERSION}-linux-${{ matrix.arch }}.tar.gz -C target/release ${name}
+            sha256sum ${name}-${VERSION}-linux-${{ matrix.arch }}.tar.gz \
+              > ${name}-${VERSION}-linux-${{ matrix.arch }}.tar.gz.sha256
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: '*linux-${{ matrix.arch }}.tar.gz*'
+
+  release:
+    needs: [build-ui, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.build-ui.outputs.version }}
+          generate_release_notes: true
+          files: artifacts/*/*

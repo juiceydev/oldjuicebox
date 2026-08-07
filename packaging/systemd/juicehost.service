@@ -1,0 +1,14 @@
+[Unit]
+Description=Juicebox² file host (juicehost)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/lib/juicebox/current
+ExecStart=/var/lib/juicebox/current/bin/juicehost
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

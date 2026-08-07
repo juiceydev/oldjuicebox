@@ -1,0 +1,15 @@
+[Unit]
+Description=Juicebox² frontend (juicefront)
+After=juiceback.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/lib/juicebox/current
+Environment=JUICEFRONT_UI_DIR=/var/lib/juicebox/current/ui
+ExecStart=/var/lib/juicebox/current/bin/juicefront
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
