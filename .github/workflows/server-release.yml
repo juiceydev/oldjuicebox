@@ -82,10 +82,16 @@ jobs:
       - name: Build binaries
         run: cargo build --release --workspace
 
+      - name: Fetch and build JuiceFetch (standalone repo)
+        run: |
+          git clone --depth 1 https://github.com/juiceboxdev/JuiceFetch.git /tmp/JuiceFetch
+          cargo build --release --manifest-path /tmp/JuiceFetch/Cargo.toml
+          cp /tmp/JuiceFetch/target/release/juicefetch target/release/juicefetch
+
       - name: Package binary tarballs
         run: |
           VERSION=${{ needs.build-ui.outputs.version }}
-          for name in juicebox juiceback juicehost juicefront; do
+          for name in juicebox juiceback juicehost juicefront juicefetch; do
             tar -czf ${name}-${VERSION}-linux-${{ matrix.arch }}.tar.gz -C target/release ${name}
             sha256sum ${name}-${VERSION}-linux-${{ matrix.arch }}.tar.gz \
               > ${name}-${VERSION}-linux-${{ matrix.arch }}.tar.gz.sha256
