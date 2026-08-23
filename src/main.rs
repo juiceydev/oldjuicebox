@@ -1,10 +1,30 @@
+use std::num::NonZeroI32;
 use std::process::Stdio;
 use tokio::process::Command;
 use tokio::signal;
-use tracing::info;
+use tracing::{info, warn};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct ProcessGroupId(NonZeroI32);
+
+impl ProcessGroupId {
+    fn from_child_id(id: Option<u32>) -> Option<Self> {
+        id.and_then(|id| i32::try_from(id).ok())
+            .and_then(NonZeroI32::new)
+            .map(Self)
+    }
+
+    fn kill_target(self) -> String {
+        format!("-{}", self.0)
+    }
+}
 
 fn release_flag() -> &'static str {
-    if cfg!(debug_assertions) { "" } else { "--release" }
+    if cfg!(debug_assertions) {
+        ""
+    } else {
+        "--release"
+    }
 }
 
 /// Check whether the `nice` command is available on this system.
@@ -22,33 +42,50 @@ fn has_nice() -> bool {
 fn spawn_args(nice_val: Option<i32>, package: &str, release: &str) -> (String, Vec<String>) {
     if let Some(n) = nice_val {
         let args = vec![
-            "-n".into(), n.to_string(),
-            "cargo".into(), "run".into(), "--package".into(), package.into(), release.into(),
+            "-n".into(),
+            n.to_string(),
+            "cargo".into(),
+            "run".into(),
+            "--package".into(),
+            package.into(),
+            release.into(),
         ];
         ("nice".into(), args)
     } else {
         let args = vec![
-            "run".into(), "--package".into(), package.into(), release.into(),
+            "run".into(),
+            "--package".into(),
+            package.into(),
+            release.into(),
         ];
         ("cargo".into(), args)
     }
 }
 
 /// Kill a process group by PGID: SIGTERM first, then SIGKILL after timeout.
-async fn kill_process_group(pgid: i32, name: &str) {
+async fn kill_process_group(pgid: Option<ProcessGroupId>, name: &str) {
+    let Some(pgid) = pgid else {
+        warn!(
+            "cannot shut down {} process group: child ID unavailable",
+            name
+        );
+        return;
+    };
+    let target = pgid.kill_target();
+
     let _ = Command::new("kill")
-        .args(["-TERM", "--", &pgid.to_string()])
+        .args(["-TERM", "--", &target])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
         .await;
-    info!("sent SIGTERM to {} process group (pgid {})", name, pgid);
+    info!("sent SIGTERM to {} process group (pgid {})", name, pgid.0);
 
     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
 
     let alive = Command::new("kill")
-        .args(["-0", &pgid.to_string()])
+        .args(["-0", "--", &target])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -60,7 +97,7 @@ async fn kill_process_group(pgid: i32, name: &str) {
     if alive {
         info!("{} process group did not exit, sending SIGKILL", name);
         let _ = Command::new("kill")
-            .args(["-KILL", "--", &pgid.to_string()])
+            .args(["-KILL", "--", &target])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -81,32 +118,44 @@ async fn main() -> anyhow::Result<()> {
     let (host_cmd, host_args) = spawn_args(use_nice.then_some(-2), "juicehost", release);
     let (front_cmd, front_args) = spawn_args(use_nice.then_some(5), "juicefront", release);
 
-    info!("starting juiceback (cmd={}, release={})", back_cmd, release == "--release");
+    info!(
+        "starting juiceback (cmd={}, release={})",
+        back_cmd,
+        release == "--release"
+    );
     let mut delta = Command::new(&back_cmd)
         .args(&back_args)
         .process_group(0)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .spawn()?;
-    let delta_pgid = delta.id().map(|p| p as i32).unwrap_or(0);
+    let delta_pgid = ProcessGroupId::from_child_id(delta.id());
 
-    info!("starting juicehost (cmd={}, release={})", host_cmd, release == "--release");
+    info!(
+        "starting juicehost (cmd={}, release={})",
+        host_cmd,
+        release == "--release"
+    );
     let mut omega = Command::new(&host_cmd)
         .args(&host_args)
         .process_group(0)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .spawn()?;
-    let omega_pgid = omega.id().map(|p| p as i32).unwrap_or(0);
+    let omega_pgid = ProcessGroupId::from_child_id(omega.id());
 
-    info!("starting juicefront (cmd={}, release={})", front_cmd, release == "--release");
+    info!(
+        "starting juicefront (cmd={}, release={})",
+        front_cmd,
+        release == "--release"
+    );
     let mut epsilon = Command::new(&front_cmd)
         .args(&front_args)
         .process_group(0)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .spawn()?;
-    let epsilon_pgid = epsilon.id().map(|p| p as i32).unwrap_or(0);
+    let epsilon_pgid = ProcessGroupId::from_child_id(epsilon.id());
 
     let result = tokio::select! {
         _ = signal::ctrl_c() => {
@@ -136,4 +185,25 @@ async fn main() -> anyhow::Result<()> {
 
     info!("shutdown complete");
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ProcessGroupId;
+
+    #[test]
+    fn process_group_id_rejects_missing_zero_and_out_of_range_ids() {
+        assert_eq!(ProcessGroupId::from_child_id(None), None);
+        assert_eq!(ProcessGroupId::from_child_id(Some(0)), None);
+        assert_eq!(
+            ProcessGroupId::from_child_id(Some(i32::MAX as u32 + 1)),
+            None
+        );
+    }
+
+    #[test]
+    fn process_group_id_uses_negative_kill_operand() {
+        let pgid = ProcessGroupId::from_child_id(Some(1234)).unwrap();
+        assert_eq!(pgid.kill_target(), "-1234");
+    }
 }

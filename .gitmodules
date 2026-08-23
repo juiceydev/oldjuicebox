@@ -10,7 +10,3 @@
 	path = juicefront
 	url = https://github.com/juiceboxdev/juicefront.git
 	branch = main
-[submodule "juiceutils"]
-	path = juiceutils
-	url = https://github.com/juiceboxdev/juiceutils.git
-	branch = main

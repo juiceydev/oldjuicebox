@@ -5,11 +5,30 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/var/lib/juicebox/current
-Environment=JUICEFRONT_UI_DIR=/var/lib/juicebox/current/ui
-ExecStart=/var/lib/juicebox/current/bin/juicefront
+User=juicefront
+Group=juicefront
+WorkingDirectory=/var/lib/juicebox/releases/current
+EnvironmentFile=/etc/juicebox/juicefront.env
+Environment=JUICEFRONT_UI_DIR=/var/lib/juicebox/releases/current/ui
+ExecStart=/var/lib/juicebox/releases/current/bin/juicefront
 Restart=on-failure
 RestartSec=5
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
 
 [Install]
 WantedBy=multi-user.target

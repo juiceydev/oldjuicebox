@@ -20,6 +20,18 @@ We have multiple services that makes juicebox² work.
 ```bash
 git clone --recursive https://github.com/juiceboxdev/juicebox.git
 cd juicebox
+cargo build
+cd juicefront/ui && bun install && cd ../.. # npm install is also supported
+# set environment variables per service OR here on the project's root.
+cargo run
+```
+
+For a release run, build the UI before launching the services:
+
+```bash
+cd juicefront/ui
+bun install && bun run build # or use the npm equivalents
+cd ../..
 cargo build --release
 # set environment variables per service OR here on the project's root.
 cargo run --release

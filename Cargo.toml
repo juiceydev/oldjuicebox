@@ -17,7 +17,7 @@ members = [
     "juiceback",
     "juicehost",
     "juicefront",
-    "juiceutils",
+    "juicehost/juiceutils",
 ]
 
 [profile.release]

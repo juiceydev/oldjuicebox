@@ -1,0 +1,73 @@
+name: CI and supply-chain checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+      # Pinning blocker: verify dtolnay/rust-toolchain's immutable commit before replacing this tag.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      # Pinning blocker: verify Swatinem/rust-cache's immutable commit before replacing this tag.
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --all-targets --all-features --locked
+      - if: ${{ always() }}
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+  rust-supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+      # Pinning blocker: verify dtolnay/rust-toolchain's immutable commit before replacing this tag.
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install cargo-audit --locked --version 0.21.2
+      - run: cargo install cargo-deny --locked --version 0.18.4
+      - run: cargo audit
+      - if: ${{ always() }}
+        run: cargo deny check
+
+  dependency-and-secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      # Pinning blocker: verify actions/setup-go's immutable commit before replacing this tag.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go run github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.2.2 scan source -r .
+      - if: ${{ always() }}
+        run: go run github.com/gitleaks/gitleaks/v8@v8.28.0 detect --source . --verbose
+
+  frontend-audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: juicefront/ui
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+      - name: Install pinned Bun
+        run: npm install --global bun@1.2.20
+      - run: bun install --frozen-lockfile
+      - run: bun audit
