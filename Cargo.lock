@@ -1878,7 +1878,7 @@ dependencies = [
  "hex",
  "hmac",
  "jsonwebtoken",
- "juiceutils",
+ "juicehost-juiceutils",
  "lettre",
  "mimalloc",
  "mime_guess",
@@ -1945,7 +1945,7 @@ dependencies = [
  "futures",
  "infer",
  "jsonwebtoken",
- "juiceutils",
+ "juicehost-juiceutils",
  "libc",
  "mimalloc",
  "mime_guess",
@@ -1967,8 +1967,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "juiceutils"
-version = "1.0.0"
+name = "juicehost-juiceutils"
+version = "0.0.0"
 dependencies = [
  "axum 0.7.9",
  "bytes",
