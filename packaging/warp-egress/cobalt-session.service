@@ -1,0 +1,32 @@
+[Unit]
+Description=cobalt media processor (session instance: MWEB+cookies+tokens)
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=-/usr/bin/docker rm -f cobalt-session
+ExecStart=/usr/bin/docker run -d --name cobalt-session \
+  --restart unless-stopped \
+  --network host \
+  -v /var/lib/juicebox/cobalt-session/keys.json:/keys.json:ro \
+  -v /var/lib/juicebox/cobalt-session/cookies.json:/cookies.json:ro \
+  -e API_URL=http://127.0.0.1:7273/ \
+  -e API_PORT=7273 \
+  -e API_LISTEN_ADDRESS=127.0.0.1 \
+  -e API_AUTH_REQUIRED=1 \
+  -e API_KEY_URL=file:///keys.json \
+  -e COOKIE_PATH=/cookies.json \
+  -e CORS_WILDCARD=0 \
+  -e YOUTUBE_POT_PER_VIDEO=1 \
+  -e HTTP_PROXY=http://100.81.219.120:8888 \
+  -e HTTPS_PROXY=http://100.81.219.120:8888 \
+  -e NO_PROXY=localhost,127.0.0.1 \
+  -e YOUTUBE_SESSION_SERVER=http://100.81.219.120:4416 \
+  -e CUSTOM_INNERTUBE_CLIENT=MWEB \
+  cobalt:11-pot
+ExecStop=/usr/bin/docker rm -f cobalt-session
+
+[Install]
+WantedBy=multi-user.target

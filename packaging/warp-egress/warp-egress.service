@@ -1,0 +1,13 @@
+[Unit]
+Description=Cloudflare WARP egress namespace (tinyproxy :8889 in netns)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/setup_warp.sh
+ExecStop=/bin/sh -c 'ip netns del warpns 2>/dev/null; ip link del v-warp-host 2>/dev/null; true'
+
+[Install]
+WantedBy=multi-user.target

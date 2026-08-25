@@ -1,0 +1,29 @@
+[Unit]
+Description=cobalt media processor (JuiceBox x Cobalt.Tools)
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=-/usr/bin/docker rm -f cobalt
+ExecStart=/usr/bin/docker run -d --name cobalt \
+  --restart unless-stopped \
+  --network host \
+  -v /var/lib/juicebox/cobalt/keys.json:/keys.json:ro \
+  -v /var/lib/juicebox/cobalt/cookies.json:/cookies.json:ro \
+  -e API_URL=http://127.0.0.1:7272/ \
+  -e API_PORT=7272 \
+  -e API_LISTEN_ADDRESS=127.0.0.1 \
+  -e API_AUTH_REQUIRED=1 \
+  -e API_KEY_URL=file:///keys.json \
+  -e COOKIE_PATH=/cookies.json \
+  -e CORS_WILDCARD=0 \
+  -e HTTP_PROXY=http://100.81.219.120:8888 \
+  -e HTTPS_PROXY=http://100.81.219.120:8888 \
+  -e NO_PROXY=localhost,127.0.0.1 \
+  cobalt:11-vr
+ExecStop=/usr/bin/docker rm -f cobalt
+
+[Install]
+WantedBy=multi-user.target
