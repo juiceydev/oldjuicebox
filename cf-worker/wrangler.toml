@@ -1,0 +1,36 @@
+# JuiceBox edge worker (downloads 307 + upload region routing)
+#
+# LOOP HAZARD: every origin this worker fetches (JUICEBACK_URL, DEFAULT_ORIGIN,
+# and each regional host in REGION_HOSTS) MUST resolve to an origin that does
+# NOT carry a worker route. If any of them points back at f.juicey.dev or
+# box.juicey.dev, requests will loop until the subrequest cap kills them.
+#
+# Deploy with `wrangler deploy` after filling in the KV namespace id.
+
+name = "juicebox-edge"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+# Scope limiter: the worker only ever sees file downloads on f.juicey.dev and
+# the upload paths on box.juicey.dev. Everything else on those hosts (and every
+# other host in the zone) routes straight to origin with no worker involvement.
+routes = [
+  { pattern = "f.juicey.dev/*", zone_name = "juicey.dev" },
+  { pattern = "box.juicey.dev/upload*", zone_name = "juicey.dev" },
+  { pattern = "box.juicey.dev/api/tus*", zone_name = "juicey.dev" },
+]
+
+[[kv_namespaces]]
+binding = "JUICEBACK_RELATIONS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+# Central juiceback (Worker-avoiding origin). Serves /file/{id}/info and the
+# upload reserve/complete/tus endpoints.
+JUICEBACK_URL = "https://box-origin.juicey.dev"
+# Origin for legacy files with no storage_host. Must bypass the worker.
+DEFAULT_ORIGIN = "https://f-origin.juicey.dev"
+# Regional juicehost public origins (Worker-avoiding). region:url pairs.
+REGION_HOSTS = "us=https://f-us.juicey.dev,eu=https://f-eu.juicey.dev,asia=https://f-asia.juicey.dev"
+# Cloudflare colo -> region mapping. Semicolon-separated region=colo,list.
+COLO_REGIONS = "us=ewr,iad,ord,dfw,atl,den,lax,sfo,sea;eu=lhr,ams,cdg,fra,arn,mad,mxp,waw;asia=nrt,hnd,kix,sin,hkg,syd"
