@@ -1,0 +1,43 @@
+# Privacy Policy - JuiceBox² (box.juicey.dev)
+
+Last updated: July 16, 2026
+
+**TL;DR (this summary is for convenience only and is not legally binding - if it conflicts with the full text below, the full text governs):**
+
+- We collect as little data as possible: no accounts, names, or emails required.
+- Your IP is hashed (salted and peppered) before storage, purely for rate-limiting/abuse prevention - the raw IP is never stored and the hash can't be reversed or viewed by anyone, including us.
+- A session cookie stores a deletion token so you can manage your own uploads. It's not used for tracking or ads.
+- Basic aggregate traffic stats come from Cloudflare - no individual tracking or fingerprinting. We also use Sentry internally for bug/error tracking - scrubbed IPs, code-level info only, no file content.
+- Uploaded files are stored to serve your link and deleted automatically after your chosen expiry, up to a default maximum of 14 days.
+- We don't sell your data, build profiles, or use tracking cookies.
+- Hosted in Frankfurt, Germany (EU) via DigitalOcean; may move in the future, possibly outside the EU, with this policy updated if so.
+- You have the usual GDPR rights (access, deletion, etc.), though since most data auto-expires and is unlinkable to you, many requests are already effectively handled.
+- Service isn't directed at anyone under 15.
+
+This Privacy Policy explains what data JuiceBox² ("we," "us," "the Service") processes when you use box.juicey.dev, and your rights regarding that data under the General Data Protection Regulation (GDPR).
+
+JuiceBox² is operated by an individual as a personal, non-commercial project, not a registered company. For the purposes of GDPR, the operator acts as the data controller for the Service. You can reach us at legal@juicey.dev.
+
+We aim to collect as little personal data as possible, and what follows is exactly what happens. When you upload a file, we compute a salted and peppered cryptographic hash of your IP address; the raw IP is never stored, the hash can't practically be reversed, and no one, including us, can view it. It exists purely as an internal identifier used to rate-limit uploads and identify or ban repeat abusers. This is processed on the basis of legitimate interest (Art. 6(1)(f) GDPR), and it's deleted automatically when the associated file expires.
+
+We also set a cookie containing a private key or deletion token, which lets you find and delete files you've uploaded during your session. This cookie is strictly necessary for that core function, isn't used for tracking, advertising, or profiling, and expires automatically when the associated file expires. Because it's strictly necessary for the service you requested, no consent banner is required for it under ePrivacy rules; under GDPR it's covered by legitimate interest and contract performance.
+
+For analytics, we use Cloudflare to see basic, aggregate traffic numbers like request volume. This doesn't involve individual tracking, fingerprinting, or cross-site profiling, and is based on our legitimate interest in keeping the Service running properly.
+
+We also use Sentry, an internal error-tracking tool, to catch and diagnose bugs and crashes in the Service. Sentry captures code-level error data, such as stack traces and technical metadata about what the application was doing when an error occurred; it does not capture the content of uploaded files or filenames. IP addresses passed to Sentry are scrubbed or anonymized before storage, so they aren't retained in identifiable form. This processing is based on our legitimate interest in maintaining and debugging the Service, and error data is retained according to Sentry's own default retention policy rather than a custom period we set ourselves.
+
+Files you upload - images, video, or audio - are stored so the Service can serve them via the link it generates. We don't scan file metadata such as EXIF data for personal information, and we don't use uploaded content for anything beyond hosting and serving it. Files are deleted automatically after your chosen expiration period, up to the instance maximum, which is 14 days by default; this maximum is a ceiling, not a guaranteed retention period, so files set to a shorter expiration are deleted sooner.
+
+There's also a fair amount we simply don't do. We don't require or collect accounts, names, or email addresses to use the Service. We don't sell or share data with advertisers, build cross-site profiles, use tracking cookies, or store raw IP addresses.
+
+In terms of retention: hashed IPs and the deletion-token cookie both last only until the associated file expires, which is up to 14 days by default, or whatever ceiling the instance is configured to. Uploaded files last until your chosen expiration or the instance maximum, whichever comes first - the 14-day figure is the outer limit, not a guaranteed length of storage. Cloudflare's aggregate analytics follow Cloudflare's own retention policy and aren't individually identifiable. Sentry error logs follow Sentry's own default retention policy; as noted above, they contain scrubbed IPs and code-level metadata only, not file content.
+
+The Service is currently hosted on DigitalOcean infrastructure in Frankfurt, Germany, within the EU. We plan to migrate to Oracle Cloud in the future, and the hosting location may change, potentially to somewhere outside the EU. If that happens, we'll update this policy and, where legally required, put appropriate safeguards in place, such as Standard Contractual Clauses, for any transfer outside the EU/EEA. Cloudflare, our CDN and analytics provider, processes data according to its own privacy policy and data transfer safeguards.
+
+Because most of the data we hold is either hashed, cookie-based, or auto-deleted, many typical data-subject requests, like asking us to delete your data, are already handled automatically: hashed IPs and cookies expire along with your file, and we can't reverse a hash to identify you in the first place. That said, under the GDPR you generally have the right to access data we hold about you, rectify inaccurate data, erase your data, restrict or object to processing, request data portability, and lodge a complaint with a supervisory authority. To exercise any of these rights, contact legal@juicey.dev - though since we don't collect identifying information, we may not be able to locate data tied to "you" specifically beyond what's in your current session or cookie. You also have the right to lodge a complaint directly with France's data protection authority, the CNIL (Commission Nationale de l'Informatique et des Libertéc)s), at www.cnil.fr or by post, if you believe your data has been processed unlawfully.
+
+The Service is not directed at children under 15, the digital age of consent under French and GDPR law, and we don't knowingly collect personal data from children under that age. Since no account creation is required, we have no reliable way to verify age; users under 18 should have a parent or guardian's permission per our Terms of Service.
+
+We may update this Privacy Policy from time to time, particularly as our hosting infrastructure changes. The "Last updated" date above reflects the most recent revision, and continued use of the Service after changes constitutes acceptance of the updated policy.
+
+Questions about this Privacy Policy or your data can be sent to legal@juicey.dev.

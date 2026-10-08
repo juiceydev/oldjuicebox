@@ -1,0 +1,17 @@
+# Expose the secondary's bun-fetch through its existing Caddy (optional).
+#
+# The primary reaches the secondary over tailscale anyway, so this is only
+# needed if you want TLS / a public hostname in front of it. Bearer auth
+# (BUN_FETCH_KEY) is still enforced by the service itself.
+#
+# Merge into the secondary's Caddyfile, then `systemctl reload caddy`:
+#
+#   fetch.<your-domain> {
+#       # tailscale-only: never publish this to the public internet
+#       bind 100.81.219.120
+#       reverse_proxy 127.0.0.1:7673
+#   }
+#
+# Then point juiceback at it:
+#   BUN_FETCH_URL=https://fetch.<your-domain>
+#   BUN_FETCH_KEY=<same key as /var/lib/bun-fetch/bun-fetch.env>

@@ -1,0 +1,342 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout title="Banned IPs - Admin - Juicebox">
+    <h1>Banned IPs</h1>
+    <p><a href="/admin">Back to Admin Panel</a></p>
+    <br />
+
+    <div>
+        <h2>Ban an IP</h2>
+        <form id="ban-form">
+            <fieldset>
+                <legend>Ban an IP address</legend>
+                <label>
+                    IP Address (will be hashed server-side)
+                    <input type="text" id="ban-ip" name="ip" placeholder="1.2.3.4" />
+                </label>
+                <br />
+                <label>
+                    Or Hash (pre-computed, from click-to-ban)
+                    <input type="text" id="ban-hash" name="hash" placeholder="a1b2c3d4..." />
+                </label>
+                <br />
+                <label>
+                    Reason (optional)
+                    <input type="text" id="ban-reason" name="reason" placeholder="spam, abuse, etc." />
+                </label>
+                <br /><br />
+                <button type="submit">Ban IP</button>
+            </fieldset>
+        </form>
+        <p id="ban-status" aria-live="polite"></p>
+    </div>
+
+    <br />
+
+    <div class="admin-toolbar">
+        <input type="text" id="search-input" placeholder="Search hash, reason, banned by..." />
+        <select id="sort-select">
+            <option value="banned_at">Banned At</option>
+            <option value="reason">Reason</option>
+            <option value="banned_by">Banned By</option>
+        </select>
+        <select id="dir-select">
+            <option value="desc">Newest first</option>
+            <option value="asc">Oldest first</option>
+        </select>
+        <button class="btn btn-primary" id="search-btn">Search</button>
+        <button class="btn" id="export-btn">Export</button>
+        <button class="btn" id="import-btn">Import</button>
+        <input type="file" id="import-file" accept="application/json,.json" style="display:none" />
+    </div>
+
+    <div id="bans-list"><p>Loading...</p></div>
+    <div class="admin-status" id="bans-status"></div>
+</AdminLayout>
+
+<script>
+    var PAGE = 50;
+    var allBans = [];
+    var displayedCount = 0;
+    var currentTotal = 0;
+
+    function formatTime(sec) {
+        return new Date(sec * 1000).toLocaleString();
+    }
+
+    function esc(s) {
+        var d = document.createElement("div");
+        d.appendChild(document.createTextNode(s));
+        return d.innerHTML;
+    }
+
+    function buildParams() {
+        var q = document.getElementById("search-input").value.trim();
+        var sort = document.getElementById("sort-select").value;
+        var dir = document.getElementById("dir-select").value;
+        return { q: q, sort: sort, dir: dir, offset: 0, limit: PAGE };
+    }
+
+    function renderRows(bans) {
+        var html = "";
+        for (var i = 0; i < bans.length; i++) {
+            var b = bans[i];
+            html +=
+                '<tr data-ban-ip="' + esc(b.ip) + '">' +
+                "<td>" + esc(b.ip) + "</td>" +
+                "<td>" + esc(b.reason || "???") + "</td>" +
+                "<td>" + esc(b.banned_by) + "</td>" +
+                "<td nowrap>" + formatTime(b.banned_at) + "</td>" +
+                '<td nowrap><a href="#" data-unban-link data-ban-ip="' + esc(b.ip) + '">Unban</a></td>' +
+                "</tr>";
+        }
+        return html;
+    }
+
+    function updateStatus() {
+        var statusEl = document.getElementById("bans-status");
+        if (!statusEl) return;
+        if (currentTotal > allBans.length) {
+            statusEl.textContent = "Showing " + Math.min(displayedCount, allBans.length) + " of " + allBans.length + " matched (total: " + currentTotal + ")";
+        } else {
+            statusEl.textContent = allBans.length + " banned IP" + (allBans.length !== 1 ? "s" : "");
+        }
+    }
+
+    function renderTable() {
+        var listEl = document.getElementById("bans-list");
+        if (!listEl) return;
+        var toShow = allBans.slice(0, displayedCount);
+        if (!toShow.length && !allBans.length) {
+            listEl.innerHTML = "<p>No banned IPs.</p>";
+            document.getElementById("bans-status").textContent = "";
+            return;
+        }
+        var html = '<div class="table-wrap"><table>' +
+            '<thead><tr>' +
+            '<th>IP Hash</th><th>Reason</th><th>Banned By</th><th>Banned At</th><th>Actions</th>' +
+            "</tr></thead><tbody>" +
+            renderRows(toShow) +
+            "</tbody></table></div>";
+        if (displayedCount < allBans.length) {
+            html += '<div style="text-align:center;margin:0.75rem 0">' +
+                '<button class="btn btn-primary" id="load-more-btn">Load More (' +
+                displayedCount + " / " + allBans.length + ")</button></div>";
+        }
+        listEl.innerHTML = html;
+        var loadMoreBtn = document.getElementById("load-more-btn");
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener("click", function () {
+                displayedCount = Math.min(displayedCount + PAGE, allBans.length);
+                renderTable();
+                updateStatus();
+            });
+        }
+        updateStatus();
+    }
+
+    async function fetchData(params) {
+        var listEl = document.getElementById("bans-list");
+        var qs = "q=" + encodeURIComponent(params.q) +
+            "&sort=" + encodeURIComponent(params.sort) +
+            "&dir=" + encodeURIComponent(params.dir) +
+            "&offset=" + params.offset +
+            "&limit=" + params.limit;
+        try {
+            var res = await fetch("/api/admin/bans?" + qs);
+            if (!res.ok) {
+                if (res.status === 401) {
+                    listEl.innerHTML = '<p>Not authenticated. <a href="/admin/login">Login</a></p>';
+                } else {
+                    listEl.innerHTML = "<p>Error: " + res.status + "</p>";
+                }
+                return null;
+            }
+            return await res.json();
+        } catch (e) {
+            listEl.innerHTML = "<p>Failed to load bans.</p>";
+            return null;
+        }
+    }
+
+    async function doSearch() {
+        var params = buildParams();
+        allBans = [];
+        displayedCount = 0;
+        currentTotal = 0;
+        renderTable();
+        document.getElementById("bans-list").innerHTML = "<p>Loading...</p>";
+
+        var result = await fetchData(params);
+        if (!result) return;
+        allBans = result.items;
+        currentTotal = result.total;
+        displayedCount = Math.min(PAGE, allBans.length);
+        renderTable();
+    }
+
+    async function init() {
+        var listEl = document.getElementById("bans-list");
+        if (!listEl) return;
+
+        listEl.addEventListener("click", function (e) {
+            var link = e.target.closest("[data-unban-link]");
+            if (link) {
+                e.preventDefault();
+                var ip = link.getAttribute("data-ban-ip");
+                if (ip) unbanIp(ip);
+            }
+        });
+
+        var form = document.getElementById("ban-form");
+        var statusEl = document.getElementById("ban-status");
+        if (form) {
+            form.addEventListener("submit", async function (e) {
+                e.preventDefault();
+                var ipVal = document.getElementById("ban-ip").value.trim();
+                var hashVal = document.getElementById("ban-hash").value.trim();
+                var reasonVal = document.getElementById("ban-reason").value.trim();
+                if (!ipVal && !hashVal) {
+                    statusEl.textContent = "Enter an IP address or hash.";
+                    return;
+                }
+                statusEl.textContent = "Banning...";
+                var payload = { reason: reasonVal };
+                if (hashVal) payload.hash = hashVal;
+                else payload.ip = ipVal;
+                try {
+                    var res = await fetch("/api/admin/bans", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                    });
+                    if (res.ok) {
+                        statusEl.textContent = hashVal ? "Banned (hash: " + hashVal + ")" : "Banned " + ipVal;
+                        document.getElementById("ban-ip").value = "";
+                        document.getElementById("ban-hash").value = "";
+                        document.getElementById("ban-reason").value = "";
+                        doSearch();
+                    } else {
+                        var body = await res.text();
+                        statusEl.textContent = "Failed: " + (body || res.status);
+                    }
+                } catch (err) {
+                    statusEl.textContent = "Error: " + err.message;
+                }
+            });
+        }
+
+        document.getElementById("search-btn").addEventListener("click", doSearch);
+        document.getElementById("search-input").addEventListener("keydown", function (e) {
+            if (e.key === "Enter") doSearch();
+        });
+        document.getElementById("sort-select").addEventListener("change", doSearch);
+        document.getElementById("dir-select").addEventListener("change", doSearch);
+
+        var exportBtn = document.getElementById("export-btn");
+        if (exportBtn) {
+            exportBtn.addEventListener("click", exportBans);
+        }
+        var importBtn = document.getElementById("import-btn");
+        var importFile = document.getElementById("import-file");
+        if (importBtn && importFile) {
+            importBtn.addEventListener("click", function () { importFile.click(); });
+            importFile.addEventListener("change", function () {
+                var file = importFile.files && importFile.files[0];
+                if (!file) return;
+                importBans(file);
+                importFile.value = "";
+            });
+        }
+
+        await doSearch();
+    }
+
+    async function unbanIp(ip) {
+        if (!confirm("Unban " + ip + "?")) return;
+        try {
+            var res = await fetch("/api/admin/ban/" + encodeURIComponent(ip), { method: "DELETE" });
+            if (res.ok) {
+                allBans = allBans.filter(function (b) { return b.ip !== ip; });
+                displayedCount = Math.min(displayedCount, allBans.length);
+                renderTable();
+                updateStatus();
+            } else {
+                var body = await res.text();
+                alert("Unban failed: " + (body || res.status));
+            }
+        } catch (e) {
+            alert("Unban failed: " + e.message);
+        }
+    }
+
+    async function exportBans() {
+        try {
+            var res = await fetch("/api/admin/bans/export");
+            if (!res.ok) {
+                alert("Export failed: " + res.status);
+                return;
+            }
+            var data = await res.json();
+            var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = "juicebox-bans-" + new Date().toISOString().slice(0, 10) + ".json";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            alert("Exported " + data.count + " ban" + (data.count !== 1 ? "s" : "") + ".");
+        } catch (e) {
+            alert("Export failed: " + e.message);
+        }
+    }
+
+    async function importBans(file) {
+        var text;
+        try {
+            text = await file.text();
+        } catch (e) {
+            alert("Could not read file: " + e.message);
+            return;
+        }
+        var payload;
+        try {
+            payload = JSON.parse(text);
+        } catch (e) {
+            alert("Invalid JSON: " + e.message);
+            return;
+        }
+        var entries = Array.isArray(payload) ? payload : (payload && payload.entries);
+        if (!entries || !entries.length) {
+            alert("No ban entries found in file.");
+            return;
+        }
+        try {
+            var res = await fetch("/api/admin/bans/import", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ entries: entries })
+            });
+            var body = await res.json().catch(function () { return null; });
+            if (res.ok) {
+                var msg = "Imported " + (body ? body.imported : entries.length) + " ban" +
+                    ((body && body.imported !== 1) || (!body && entries.length !== 1) ? "s" : "") + ".";
+                if (body && body.errors && body.errors.length) {
+                    msg += "\n" + body.errors.length + " entr" + (body.errors.length !== 1 ? "ies" : "y") + " skipped.";
+                }
+                alert(msg);
+                doSearch();
+            } else {
+                alert("Import failed: " + (body && body.error ? body.error : res.status));
+            }
+        } catch (e) {
+            alert("Import failed: " + e.message);
+        }
+    }
+
+    init();
+</script>

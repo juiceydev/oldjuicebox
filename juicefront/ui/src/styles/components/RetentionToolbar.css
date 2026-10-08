@@ -1,0 +1,14 @@
+@import "./RetentionToolbarShared.css";
+
+.rttoolbar[data-enhanced] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--juice-900);
+    border: 1px solid var(--juice-700);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    gap: 1.5rem;
+    -webkit-tap-highlight-color: transparent;
+}

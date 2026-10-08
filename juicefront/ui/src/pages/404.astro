@@ -1,0 +1,14 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { t, resolveLocale } from "../i18n";
+
+const locale = resolveLocale(Astro.currentLocale);
+---
+
+<BaseLayout
+    title={t(locale, "not_found.title")}
+    description={t(locale, "not_found.description")}
+    bodyClass="content-page"
+>
+    <h1>{t(locale, "not_found.heading")}</h1>
+</BaseLayout>

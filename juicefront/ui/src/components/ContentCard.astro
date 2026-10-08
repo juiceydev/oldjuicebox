@@ -1,0 +1,82 @@
+---
+/**
+ * HTML-first content card. Navigation is handled by the server-rendered
+ * ActionsGrid links; no JavaScript is required.
+ */
+import UploadHeader from "./UploadHeader.astro";
+import UploadFooter from "./UploadFooter.astro";
+import ActionsGrid from "./ActionsGrid.astro";
+import { getRepoUrl } from "../lib/metadata";
+import { t, resolveLocale } from "../i18n";
+
+interface Props {
+    id?: string;
+    title?: string;
+    subtitle?: string;
+    footerCommit?: string;
+    footerMessage?: string;
+    footerRepoUrl?: string;
+    footerLinks?: {
+        label: string;
+        href: string;
+        external?: boolean;
+        ariaLabel?: string;
+    }[];
+    actions?: {
+        id?: string;
+        label: string;
+        icon?: string;
+        ariaLabel?: string;
+        href?: string;
+        disabled?: boolean;
+    }[];
+}
+
+const {
+    id,
+    title = "Juicebox",
+    subtitle = "",
+    footerCommit = "main@a3f8c2d",
+    footerMessage = "juicebox2-epsilon",
+    footerRepoUrl = getRepoUrl(),
+    footerLinks = [],
+    actions,
+} = Astro.props as Props;
+
+const cardId = id ?? "content-card";
+const headerId = `${cardId}-header`;
+const actionsGridId = `${cardId}-actions`;
+const locale = resolveLocale(Astro.currentLocale);
+---
+
+<div
+    id={cardId}
+    class="upload-card content-card"
+    data-content-card
+    data-component="content-card"
+    aria-labelledby={headerId}
+    transition:name="main-card"
+>
+    <UploadHeader id={headerId} title={title} subtitle={subtitle} />
+
+    <section class="content-body">
+        <slot />
+    </section>
+
+    {
+        actions && (
+            <ActionsGrid
+                id={actionsGridId}
+                actions={actions}
+                heading={t(locale, "actions.page_actions")}
+            />
+        )
+    }
+
+    <UploadFooter
+        commit={footerCommit}
+        message={footerMessage}
+        repoUrl={footerRepoUrl}
+        links={footerLinks}
+    />
+</div>

@@ -1,0 +1,141 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/components/DownloadPage.css";
+import ContentCard from "../components/ContentCard.astro";
+import Icon from "../components/Icon.astro";
+import { getFormattedCommitLabel, getRepoUrl } from "../lib/metadata";
+import { t, resolveLocale } from "../i18n";
+import { iconSvgHtml } from "../lib/icons";
+
+const locale = resolveLocale(Astro.currentLocale);
+const footerCommit = getFormattedCommitLabel();
+const canonicalUrl = getRepoUrl();
+
+const customActions = [
+  {
+    id: "back",
+    label: t(locale, "nav.back"),
+    icon: "back",
+    ariaLabel: t(locale, "nav.back_aria"),
+  },
+  { id: "files", label: t(locale, "nav.files"), icon: "files" },
+  { id: "more", label: t(locale, "nav.more"), icon: "more" },
+];
+
+const REPO_URL = "https://github.com/juiceboxdev/juicebox-plus";
+const RELEASES_URL = `${REPO_URL}/releases`;
+const LATEST_API_URL = `${REPO_URL.replace("github.com", "api.github.com/repos")}/releases/latest`;
+const FALLBACK_TAG = "v1.1.4";
+
+let latestTag: string | null = null;
+let latestTagFetchedAt = 0;
+const CACHE_TTL_MS = 10 * 60 * 1000;
+
+async function getLatestTag(): Promise<string> {
+  if (latestTag && Date.now() - latestTagFetchedAt < CACHE_TTL_MS) {
+    return latestTag;
+  }
+  try {
+    const res = await fetch(LATEST_API_URL, {
+      headers: { "User-Agent": "juicebox-ui", Accept: "application/vnd.github+json" },
+    });
+    if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+    const data = (await res.json()) as { tag_name?: string };
+    if (typeof data.tag_name === "string" && data.tag_name) {
+      latestTag = data.tag_name;
+      latestTagFetchedAt = Date.now();
+      return latestTag;
+    }
+  } catch {
+    // fall through to fallback below
+  }
+  return FALLBACK_TAG;
+}
+
+const tag = await getLatestTag();
+const version = tag.replace(/^v/, "");
+
+const WINDOWS_URL = `${RELEASES_URL}/download/${tag}/juicebox-plus-setup-${version}.exe`;
+const MACOS_URL = `${RELEASES_URL}/download/${tag}/juicebox-plus-macos`;
+const LINUX_URL = `${RELEASES_URL}/download/${tag}/juicebox-plus-linux`;
+
+const LINUX_FORMATS = [
+  { label: "AppImage", icon: "appimage", href: RELEASES_URL },
+  { label: "Debian", icon: "debian", href: RELEASES_URL },
+  { label: "Fedora", icon: "fedora", href: RELEASES_URL },
+];
+---
+
+<BaseLayout
+      title="Download Juicebox+ - Juicebox"
+  description="Download the juicebox-plus desktop app for Windows, macOS, or Linux."
+  canonical={canonicalUrl}
+  bodyClass="content-page"
+>
+  <main id="main-content" transition:animate="none">
+    <ContentCard
+      title="Download Juicebox+"
+      subtitle="The desktop companion app for UltraFast uploads"
+      footerCommit={footerCommit}
+      footerRepoUrl={canonicalUrl}
+      actions={customActions}
+    >
+      <div class="download-cards">
+        <div class="download-card">
+          <div class="download-card__icon">
+            <Fragment set:html={iconSvgHtml("windows", 40, "", "auto")} />
+          </div>
+          <h3 class="download-card__name">Windows</h3>
+          <p class="download-card__desc">Windows 10/11</p>
+          <a href={WINDOWS_URL} class="mdlbtn mdlbtn--primary download-card__btn">Download</a>
+        </div>
+
+        <div class="download-divider" aria-hidden="true"></div>
+
+        <div class="download-card">
+          <div class="download-card__icon">
+            <Fragment set:html={iconSvgHtml("apple", 40, "", "auto")} />
+          </div>
+          <h3 class="download-card__name">macOS</h3>
+          <p class="download-card__desc">macOS 12+ (Apple &amp; Intel)</p>
+          <a href={MACOS_URL} class="mdlbtn mdlbtn--primary download-card__btn">Download</a>
+        </div>
+
+        <div class="download-divider" aria-hidden="true"></div>
+
+        <div class="download-card">
+          <div class="download-card__icon">
+            <Fragment set:html={iconSvgHtml("linux", 40, "", "auto")} />
+          </div>
+          <h3 class="download-card__name">Linux</h3>
+          <p class="download-card__desc">AppImage, .deb, .rpm</p>
+          <div class="download-split">
+            <a href={LINUX_URL} class="mdlbtn mdlbtn--primary download-split__main">Download</a>
+            <details class="select-details download-split__details" data-select-details="">
+              <summary class="mdlbtn mdlbtn--primary download-split__arrow" aria-label="Choose Linux format">
+                <Icon name="chevron-up" size={24} shapeRendering="auto" />
+              </summary>
+              <summary class="select-close-btn nojs-only">{t(locale, "sr.close_btn")}</summary>
+              <div class="select-menu select-menu--details download-split__menu" role="menu" aria-label="Linux formats">
+                <div class="select-options-list">
+                  {LINUX_FORMATS.map((fmt) => (
+                    <a class="select-option" role="menuitem" href={fmt.href}>
+                      <span class="select-option__icon">
+                        <Icon name={fmt.icon} shapeRendering="auto" />
+                      </span>
+                      <span class="select-option__label">{fmt.label}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <p class="download-soon">Android and iOS versions soon.</p>
+
+      <p class="download-nojs-warning nojs-only">{t(locale, "download.nojs_disclaimer")}</p>
+    </ContentCard>
+  </main>
+</BaseLayout>

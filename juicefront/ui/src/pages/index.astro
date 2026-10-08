@@ -1,0 +1,57 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import UploadCard from "../components/UploadCard.astro";
+import AnnouncementBanner from "../components/AnnouncementBanner.astro";
+import { getRepoUrl } from "../lib/metadata";
+import { checkBackendHealth } from "../lib/health";
+import { checkUserBan } from "../lib/ban";
+import { t, resolveLocale } from "../i18n";
+
+const locale = resolveLocale(Astro.currentLocale);
+const canonicalUrl = getRepoUrl();
+const backendOffline = !(await checkBackendHealth());
+const { banned } = await checkUserBan(Astro.request);
+
+const url = new URL(Astro.request.url);
+const uploadedParam = url.searchParams.get("uploaded");
+let uploadedFileJson: string | null = null;
+if (uploadedParam) {
+  try {
+    const json = JSON.parse(
+      atob(uploadedParam.replace(/-/g, "+").replace(/_/g, "/")),
+    );
+    // Validate each field is a string/number and truncate strings to prevent XSS
+    const sanitize = (v: unknown, maxLen = 500): string => {
+      if (typeof v !== "string") return String(v ?? "");
+      return v.length > maxLen ? v.slice(0, maxLen) : v;
+    };
+    const safeNum = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+    uploadedFileJson = JSON.stringify({
+      id: sanitize(json.id, 50),
+      filename: sanitize(json.filename, 500),
+      mime_type: sanitize(json.mime_type, 200),
+      size_bytes: safeNum(json.size_bytes),
+      uploaded_at: safeNum(json.uploaded_at),
+      expires_at: safeNum(json.expires_at),
+      url: sanitize(json.url, 2048),
+      delete_token: sanitize(json.delete_token, 200),
+    });
+  } catch {}
+}
+---
+
+<BaseLayout
+    title={t(locale, "site.title")}
+    description={t(locale, "site.description_short")}
+    canonical={canonicalUrl}
+    bodyClass="upload-page"
+    backendOffline={backendOffline}
+    isBanned={banned}
+>
+    <main id="main-content" transition:animate="none">
+        <div class="upload-stack">
+            <AnnouncementBanner />
+            <UploadCard uploadedFile={uploadedFileJson} />
+        </div>
+    </main>
+</BaseLayout>

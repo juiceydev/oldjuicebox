@@ -1,0 +1,82 @@
+---
+/**
+ * HTML-first files card. Server file list is rendered as native HTML cards
+ * (visible without JS). JavaScript enhances by replacing static URL text
+ * with copy buttons, wiring up interactive delete, and merging with localStorage.
+ */
+import FilesCardSolid from "./FilesCard.tsx";
+import { getRepoUrl } from "../lib/metadata";
+import { t, resolveLocale } from "../i18n";
+import type { ServerFile } from "../lib/types";
+
+const locale = resolveLocale(Astro.currentLocale);
+
+let defaultHost = "";
+try {
+  const apiBase = process.env.JUICEBACK_URL || import.meta.env.JUICEBACK_URL || "";
+  const res = await fetch(`${apiBase}/api/config`, { signal: AbortSignal.timeout(3000) });
+  if (res.ok) {
+    const cfg = await res.json();
+    if (typeof cfg.public_base_url === "string") defaultHost = cfg.public_base_url;
+  }
+} catch {}
+
+interface Props {
+    id?: string;
+    locale?: string;
+    title?: string;
+    subtitle?: string;
+    footerCommit?: string;
+    footerMessage?: string;
+    footerRepoUrl?: string;
+    footerLinks?: {
+        label: string;
+        href: string;
+        external?: boolean;
+        ariaLabel?: string;
+    }[];
+    emptyMessage?: string;
+    actions?: {
+        id?: string;
+        label: string;
+        icon?: string;
+        ariaLabel?: string;
+        disabled?: boolean;
+    }[];
+    initialFiles?: ServerFile[];
+}
+
+const {
+    id,
+    locale: localeProp,
+    title = t(locale, "files.fallback_title"),
+    subtitle = t(locale, "files.fallback_subtitle"),
+    footerCommit = "main@a3f8c2d",
+    footerMessage = "juicebox2-epsilon",
+    footerRepoUrl = getRepoUrl(),
+    footerLinks = [],
+    emptyMessage = t(locale, "files.fallback_empty"),
+    actions,
+    initialFiles = [],
+} = Astro.props as Props;
+
+const finalLocale = localeProp ?? locale;
+---
+
+<div style="view-transition-name: main-card">
+    <FilesCardSolid
+        client:idle
+        id={id}
+        locale={finalLocale}
+        title={title}
+        subtitle={subtitle}
+        footerCommit={footerCommit}
+        footerMessage={footerMessage}
+        footerRepoUrl={footerRepoUrl}
+        footerLinks={footerLinks}
+        emptyMessage={emptyMessage}
+        actions={actions}
+        initialFiles={initialFiles}
+        defaultHost={defaultHost}
+    />
+</div>

@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  CARGO_TERM_COLOR: always
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ui
+
+      - name: Build (Rust)
+        run: cargo build --release
+
+      - name: Build (Astro)
+        run: npm run build
+        working-directory: ui
+
+      - name: Download juicebox-plus binary (Linux)
+        if: runner.os == 'Linux'
+        run: gh release download --repo juiceboxdev/juicebox-plus --pattern "juicebox-plus-linux" --latest
+
+      - name: Download juicebox-plus binary (macOS)
+        if: runner.os == 'macOS'
+        run: gh release download --repo juiceboxdev/juicebox-plus --pattern "juicebox-plus-macos" --latest
+
+      - name: Download juicebox-plus binary (Windows)
+        if: runner.os == 'Windows'
+        run: gh release download --repo juiceboxdev/juicebox-plus --pattern "juicebox-plus-windows.exe" --latest
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: juicefront-${{ matrix.os }}
+          path: |
+            target/release/juicefront*
+            juicebox-plus*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*

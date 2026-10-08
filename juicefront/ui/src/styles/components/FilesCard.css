@@ -1,0 +1,45 @@
+.files-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.files-page main {
+  width: 100%;
+}
+
+.files-card .act {
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .files-page {
+    padding: 1rem;
+  }
+
+  .upload-card {
+    padding: 1.5rem;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .upload-page main,
+  .files-page main {
+    width: 100%;
+    max-width: var(--container-max-width);
+    overflow-x: hidden;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  .upload-header,
+  .rttoolbar,
+  .drop-zone,
+  .file-list-container,
+  .act {
+    max-width: 100%;
+  }
+}

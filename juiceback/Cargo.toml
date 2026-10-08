@@ -1,0 +1,72 @@
+[package]
+name = "juiceback"
+version = "1.0.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[features]
+default = ["quic"]
+quic = [
+    "quinn",
+    "quinn-proto",
+    "h3",
+    "h3-quinn",
+    "rustls",
+    "rustls-pki-types",
+    "juiceutils/quic",
+]
+
+[dependencies]
+axum = { version = "0.7", features = ["multipart", "ws"] }
+tokio = { version = "1", features = ["full"] }
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.5", features = ["fs", "trace", "compression-gzip", "compression-br", "compression-zstd", "limit", "cors", "timeout"] }
+tower_governor = "0.4"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+mimalloc = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = "0.4"
+dotenvy = "0.15"
+uuid = { version = "1", features = ["v4", "fast-rng"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
+mime_guess = "2"
+nanoid = "0.4"
+reqwest = { version = "0.12", features = ["multipart", "stream", "json"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.31"
+argon2 = "0.5"
+jsonwebtoken = { version = "10.3", default-features = false, features = ["aws_lc_rs"] }
+flate2 = "1.0"
+dashmap = "6.0"
+base64 = "0.22"
+futures = "0.3"
+tokio-stream = "0.1"
+quinn = { version = "0.11", features = ["runtime-tokio"], optional = true }
+quinn-proto = { version = "0.11", optional = true }
+h3 = { version = ">=0.0.7", optional = true }
+h3-quinn = { version = ">=0.0.8", optional = true }
+rustls = { version = "0.23", optional = true }
+rustls-pki-types = { version = "1", optional = true }
+bytes = "1"
+percent-encoding = "2"
+url = "2"
+utoipa = { version = "5", features = ["axum_extras"] }
+lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1-native-tls", "builder"] }
+sentry = { version = "0.48", features = ["tower", "tower-axum-matched-path", "logs", "metrics"] }
+sentry-tracing = { version = "0.48", features = ["logs"] }
+subtle = "2"
+aes-gcm = "0.10"
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+blake3 = "1"
+rand = "0.8"
+async-stream = "0.3"
+juiceutils = { path = "../juicehost/juiceutils", package = "juicehost-juiceutils" }
+
+[dev-dependencies]
+tempfile = "3"
+tower = { version = "0.4", features = ["util"] }
+wiremock = "0.6"

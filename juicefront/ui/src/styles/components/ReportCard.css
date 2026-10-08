@@ -1,0 +1,24 @@
+.report-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.report-page main {
+    width: 100%;
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.report-card .act {
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .report-page {
+        padding: 1rem;
+    }
+}

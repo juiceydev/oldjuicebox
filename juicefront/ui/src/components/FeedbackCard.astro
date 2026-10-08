@@ -1,0 +1,134 @@
+---
+/**
+ * HTML-first feedback card. A plain <form> posting to the backend's no-JS
+ * /api/feedback endpoint, with native browser validation.
+ * No JavaScript involved at all.
+ */
+import UploadHeader from "./UploadHeader.astro";
+import UploadFooter from "./UploadFooter.astro";
+import ActionsGrid from "./ActionsGrid.astro";
+import { getRepoUrl } from "../lib/metadata";
+import { t, resolveLocale } from "../i18n";
+
+interface Props {
+    id?: string;
+    title?: string;
+    subtitle?: string;
+    submitted?: boolean;
+    footerCommit?: string;
+    footerMessage?: string;
+    footerRepoUrl?: string;
+    footerLinks?: {
+        label: string;
+        href: string;
+        external?: boolean;
+        ariaLabel?: string;
+    }[];
+    actions?: {
+        id?: string;
+        label: string;
+        icon?: string;
+        ariaLabel?: string;
+        href?: string;
+        disabled?: boolean;
+    }[];
+}
+
+const locale = resolveLocale(Astro.currentLocale);
+
+const {
+    id,
+    title = t(locale, "feedback.title"),
+    subtitle = t(locale, "feedback.subtitle"),
+    submitted = false,
+    footerCommit = "main@a3f8c2d",
+    footerMessage = "juicebox2-epsilon",
+    footerRepoUrl = getRepoUrl(),
+    footerLinks = [],
+    actions,
+} = Astro.props as Props;
+
+const cardId = id ?? "feedback-card";
+const headerId = `${cardId}-header`;
+const actionsGridId = `${cardId}-actions`;
+---
+
+<div
+    id={cardId}
+    class="upload-card report-card"
+    data-report-card
+    data-component="feedback-card"
+    aria-labelledby={headerId}
+    transition:name="main-card"
+>
+    <UploadHeader id={headerId} title={title} subtitle={subtitle} />
+
+    <section class="rpfcontainer" data-report-form>
+        <div class="rpfcontent">
+            {submitted && (
+                <div class="report-success-banner" role="alert">
+                    <p><strong>{t(locale, "feedback.success")}</strong></p>
+                </div>
+            )}
+            <form method="POST" action="/api/feedback" class="report-form" data-astro-reload>
+                <div class="form-field">
+                    <label for={`${cardId}-message`} class="form-label">
+                        {t(locale, "feedback.label")} <span class="required">*</span>
+                    </label>
+                    <textarea
+                        id={`${cardId}-message`}
+                        class="form-textarea"
+                        name="message"
+                        rows="5"
+                        maxlength="1000"
+                        placeholder={t(locale, "feedback.placeholder")}
+                        required
+                    ></textarea>
+                    <p class="form-help-text">{t(locale, "feedback.max")}</p>
+                </div>
+
+                <div class="form-field">
+                    <label for={`${cardId}-email`} class="form-label">
+                        {t(locale, "feedback.email")}
+                    </label>
+                    <input
+                        id={`${cardId}-email`}
+                        type="email"
+                        name="email"
+                        class="form-input"
+                        placeholder="you@example.com"
+                    />
+                    <p class="form-help-text">
+                        {t(locale, "feedback.email_hint")}
+                    </p>
+                </div>
+
+                <div class="rpfactions">
+                    <button
+                        type="submit"
+                        class="report-btn report-btn--primary"
+                    >
+                        {t(locale, "feedback.submit")}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    {
+        actions && (
+            <ActionsGrid
+                id={actionsGridId}
+                actions={actions}
+                heading={t(locale, "actions.feedback_actions")}
+            />
+        )
+    }
+
+    <UploadFooter
+        commit={footerCommit}
+        message={footerMessage}
+        repoUrl={footerRepoUrl}
+        links={footerLinks}
+    />
+</div>

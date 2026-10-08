@@ -1,0 +1,210 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout title="Feedback - Admin - Juicebox">
+    <h1>Feedback</h1>
+    <p><a href="/admin">Back to Admin Panel</a></p>
+
+    <div class="admin-toolbar">
+        <input type="text" id="search-input" placeholder="Search message, email..." />
+        <select id="sort-select">
+            <option value="created_at">Time</option>
+            <option value="id">ID</option>
+        </select>
+        <select id="dir-select">
+            <option value="desc">Newest first</option>
+            <option value="asc">Oldest first</option>
+        </select>
+        <button class="btn btn-primary" id="search-btn">Search</button>
+    </div>
+
+    <div id="feedback-list"><p>Loading...</p></div>
+    <div class="admin-status" id="feedback-status"></div>
+</AdminLayout>
+
+<script>
+    var PAGE = 50;
+    var allFeedback = [];
+    var displayedCount = 0;
+    var currentTotal = 0;
+
+    function formatTime(sec) {
+        return new Date(sec * 1000).toLocaleString();
+    }
+
+    function esc(s) {
+        var d = document.createElement("div");
+        d.appendChild(document.createTextNode(s));
+        return d.innerHTML;
+    }
+
+    function buildParams() {
+        var q = document.getElementById("search-input").value.trim();
+        var sort = document.getElementById("sort-select").value;
+        var dir = document.getElementById("dir-select").value;
+        return { q: q, sort: sort, dir: dir, offset: 0, limit: PAGE };
+    }
+
+    function renderRows(entries) {
+        var html = "";
+        for (var i = 0; i < entries.length; i++) {
+            var f = entries[i];
+            html +=
+                '<tr data-feedback-id="' + f.id + '">' +
+                "<td>" + f.id + "</td>" +
+                "<td nowrap>" + formatTime(f.created_at) + "</td>" +
+                "<td>" + esc(f.message) + "</td>" +
+                "<td>" + esc(f.email || "???") + "</td>" +
+                "<td>" + esc(f.reporter_ip || "???") + "</td>" +
+                "<td>" +
+                    (f.reporter_ip_hash
+                        ? '<a href="#" data-ban-trigger data-ban-hash="' + esc(f.reporter_ip_hash) + '">' + esc(f.reporter_ip_hash) + "</a>"
+                        : "???") +
+                "</td>" +
+                '<td nowrap><a href="#" data-delete-link data-feedback-id="' + f.id + '">Delete</a></td>' +
+                "</tr>";
+        }
+        return html;
+    }
+
+    function updateStatus() {
+        var statusEl = document.getElementById("feedback-status");
+        if (!statusEl) return;
+        if (currentTotal > allFeedback.length) {
+            statusEl.textContent = "Showing " + Math.min(displayedCount, allFeedback.length) + " of " + allFeedback.length + " matched (total: " + currentTotal + ")";
+        } else {
+            statusEl.textContent = allFeedback.length + " feedback entr" + (allFeedback.length !== 1 ? "ies" : "y");
+        }
+    }
+
+    function renderTable() {
+        var listEl = document.getElementById("feedback-list");
+        if (!listEl) return;
+        var toShow = allFeedback.slice(0, displayedCount);
+        if (!toShow.length && !allFeedback.length) {
+            listEl.innerHTML = "<p>No feedback yet.</p>";
+            document.getElementById("feedback-status").textContent = "";
+            return;
+        }
+        var html = '<div class="table-wrap"><table>' +
+            '<thead><tr>' +
+            '<th>ID</th><th>Time</th><th>Message</th><th>Email</th><th>IP</th><th>IP Hash</th><th>Actions</th>' +
+            "</tr></thead><tbody>" +
+            renderRows(toShow) +
+            "</tbody></table></div>";
+        if (displayedCount < allFeedback.length) {
+            html += '<div style="text-align:center;margin:0.75rem 0">' +
+                '<button class="btn btn-primary" id="load-more-btn">Load More (' +
+                displayedCount + " / " + allFeedback.length + ")</button></div>";
+        }
+        listEl.innerHTML = html;
+        var loadMoreBtn = document.getElementById("load-more-btn");
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener("click", function () {
+                displayedCount = Math.min(displayedCount + PAGE, allFeedback.length);
+                renderTable();
+                updateStatus();
+            });
+        }
+        updateStatus();
+    }
+
+    async function fetchData(params) {
+        var listEl = document.getElementById("feedback-list");
+        var qs = "q=" + encodeURIComponent(params.q) +
+            "&sort=" + encodeURIComponent(params.sort) +
+            "&dir=" + encodeURIComponent(params.dir) +
+            "&offset=" + params.offset +
+            "&limit=" + params.limit;
+        try {
+            var res = await fetch("/api/admin/feedback?" + qs);
+            if (!res.ok) {
+                if (res.status === 401) {
+                    listEl.innerHTML = '<p>Not authenticated. <a href="/admin/login">Login</a></p>';
+                } else {
+                    listEl.innerHTML = "<p>Error: " + res.status + "</p>";
+                }
+                return null;
+            }
+            return await res.json();
+        } catch (e) {
+            listEl.innerHTML = "<p>Failed to load feedback.</p>";
+            return null;
+        }
+    }
+
+    async function doSearch() {
+        var params = buildParams();
+        allFeedback = [];
+        displayedCount = 0;
+        currentTotal = 0;
+        renderTable();
+        document.getElementById("feedback-list").innerHTML = "<p>Loading...</p>";
+
+        var result = await fetchData(params);
+        if (!result) return;
+        allFeedback = result.items;
+        currentTotal = result.total;
+        displayedCount = Math.min(PAGE, allFeedback.length);
+        renderTable();
+    }
+
+    async function init() {
+        var listEl = document.getElementById("feedback-list");
+        if (!listEl) return;
+
+        listEl.addEventListener("click", function (e) {
+            var link = e.target.closest("[data-delete-link]");
+            if (link) {
+                e.preventDefault();
+                var id = link.getAttribute("data-feedback-id");
+                if (id) deleteFeedback(parseInt(id, 10));
+            }
+            var banLink = e.target.closest("[data-ban-trigger]");
+            if (banLink) {
+                e.preventDefault();
+                var hash = banLink.getAttribute("data-ban-hash");
+                if (hash && confirm("Ban IP with hash " + hash + "?")) {
+                    fetch("/api/admin/bans", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ hash: hash, reason: "Banned from feedback admin" }),
+                    }).then(function (r) {
+                        if (r.ok) alert("IP banned.");
+                        else alert("Ban failed: " + r.status);
+                    });
+                }
+            }
+        });
+
+        document.getElementById("search-btn").addEventListener("click", doSearch);
+        document.getElementById("search-input").addEventListener("keydown", function (e) {
+            if (e.key === "Enter") doSearch();
+        });
+        document.getElementById("sort-select").addEventListener("change", doSearch);
+        document.getElementById("dir-select").addEventListener("change", doSearch);
+
+        await doSearch();
+    }
+
+    async function deleteFeedback(id) {
+        if (!confirm("Delete feedback #" + id + "?")) return;
+        try {
+            var res = await fetch("/api/admin/feedback/" + encodeURIComponent(id), { method: "DELETE" });
+            if (res.ok) {
+                allFeedback = allFeedback.filter(function (f) { return f.id !== id; });
+                displayedCount = Math.min(displayedCount, allFeedback.length);
+                renderTable();
+                updateStatus();
+            } else {
+                var body = await res.text();
+                alert("Delete failed: " + (body || res.status));
+            }
+        } catch (e) {
+            alert("Delete failed: " + e.message);
+        }
+    }
+
+    init();
+</script>

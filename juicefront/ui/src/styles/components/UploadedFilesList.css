@@ -1,0 +1,500 @@
+.upldfs {
+  position: relative;
+  background-color: transparent;
+  border: 1px solid var(--juice-800);
+  border-radius: 1rem;
+  padding: 0 1.5rem;
+  min-height: 300px;
+}
+
+.uploaded-files-content {
+  width: 100%;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.files-page .upldfs {
+  max-height: min(60vh, 640px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
+
+.files-page .uploaded-files-content {
+  flex: 1 0 auto;
+}
+
+.upldfs .scroll-element {
+  display: none;
+  height: 20px;
+  flex-shrink: 0;
+  pointer-events: none;
+  width: 100%;
+}
+
+.files-page .upldfs .scroll-element {
+  display: block;
+}
+
+.files-page .upldfs .scroll-cover-top,
+.files-page .upldfs .scroll-cover-bottom {
+  background: var(--juice-900);
+  z-index: 20;
+  position: relative;
+}
+
+.files-page .upldfs .scroll-cover-bottom {
+  margin-top: -20px;
+}
+
+.files-page .upldfs .sticky-shadow-top {
+  position: sticky;
+  top: 0;
+  margin-top: -20px;
+  z-index: 10;
+  background: radial-gradient(
+    farthest-side at 50% 0,
+    rgba(0, 0, 0, 0.6),
+    rgba(0, 0, 0, 0)
+  );
+}
+
+.files-page .upldfs .sticky-shadow-bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: radial-gradient(
+    farthest-side at 50% 100%,
+    rgba(0, 0, 0, 0.6),
+    rgba(0, 0, 0, 0)
+  );
+}
+
+.files-page .upldfs::-webkit-scrollbar {
+  width: 8px;
+}
+
+.files-page .upldfs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.files-page .upldfs::-webkit-scrollbar-thumb {
+  background-color: var(--juice-700);
+  border-radius: 999px;
+}
+
+.files-page .upldfs::-webkit-scrollbar-thumb:hover {
+  background-color: var(--juice-600);
+}
+
+.nothin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+.nothin[hidden] {
+  display: none !important;
+}
+
+.nothin-icon {
+  color: var(--juice-600);
+  margin-bottom: 1rem;
+}
+
+.nothin-text {
+  color: var(--juice-500);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.files-offline {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  gap: 0.5rem;
+}
+html[data-backend-offline] .files-offline,
+html[data-banned] .files-offline {
+  display: flex;
+}
+html[data-backend-offline] .files-grid,
+html[data-backend-offline] [data-files-empty],
+html[data-banned] .files-grid,
+html[data-banned] [data-files-empty] {
+  display: none;
+}
+.files-offline .offline-icon {
+  width: 3rem;
+  height: 3rem;
+  color: var(--juice-500);
+  margin: 0;
+}
+.files-offline .offline-primary {
+  color: var(--juice-400);
+
+  font-size: 1rem;
+  margin: 0;
+}
+.files-offline .offline-secondary {
+  color: var(--juice-500);
+  font-size: 0.8rem;
+  text-align: center;
+  max-width: 24rem;
+  margin: 0;
+}
+
+.files-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.files-grid[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .files-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .file-card {
+    max-width: 100%;
+    overflow: hidden;
+  }
+}
+
+.file-card {
+  background-color: rgba(var(--juice-800-rgb), 0.5);
+  border: 1px solid var(--juice-700);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.files-grid .file-card {
+  animation: fade-in-up 0.5s ease-out backwards;
+  animation-delay: calc(min(var(--file-card-index, 0), 10) * 0.06s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .files-grid .file-card {
+    animation: none;
+  }
+}
+
+.file-card.exiting {
+  animation: file-card-exit 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes file-card-exit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+.file-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.file-card-icon {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--orange-400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--juice-900);
+  border-radius: 0.5rem;
+}
+
+.file-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-card-name {
+  font-size: 18px;
+  font-weight: normal;
+  color: var(--juice-100);
+  margin: 0 0 0.25rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-all;
+  font-family: "Secondary", "Unifont", monospace;
+}
+
+.file-card-meta {
+  font-size: 0.8rem;
+  color: var(--juice-400);
+  margin: 0;
+}
+
+.storage-host-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: var(--juice-500);
+  margin-top: 0.25rem;
+  margin-left: auto;
+  align-self: flex-start;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+}
+
+.file-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.file-card-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.file-card-ttl {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+  min-height: 40px;
+}
+
+.file-card-ttl-icon {
+  color: var(--orange-500);
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+}
+
+.file-card-ttl.expired .file-card-ttl-icon {
+  color: var(--red-500, #ef4444);
+}
+
+.file-card-ttl-label {
+  font-size: 16px;
+  color: var(--juice-300);
+  font-family: "General", "Unifont", monospace;
+
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.file-card-ttl.expired .file-card-ttl-label {
+  color: var(--red-500, #ef4444);
+}
+
+.file-card-ttl-bar {
+  position: relative;
+  display: block;
+  flex: 1;
+  max-width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background-color: var(--juice-800);
+  overflow: hidden;
+}
+
+.file-card-ttl-fill {
+  display: block;
+  height: 100%;
+  width: var(--ttl, 0%);
+  border-radius: 999px;
+  background-color: var(--orange-500);
+  transition: width 0.3s ease;
+}
+
+.file-card-ttl.expired .file-card-ttl-fill {
+  background-color: var(--red-500, #ef4444);
+}
+
+.file-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background-color: var(--juice-700);
+  border: 1px solid var(--juice-600);
+  border-radius: 0.5rem;
+  color: var(--juice-300);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.file-action-btn:hover {
+  background-color: var(--juice-600);
+  border-color: var(--juice-500);
+  color: var(--juice-100);
+  transform: translateY(-1px);
+}
+
+.file-action-btn:focus-visible {
+  outline: 2px solid var(--orange-400);
+  outline-offset: 2px;
+}
+
+.file-action-btn:active {
+  transform: translateY(0);
+}
+
+.file-action-btn.success {
+  background-color: var(--green-600);
+  border-color: var(--green-500);
+  color: white;
+}
+
+.file-action-btn--danger:hover {
+  background-color: var(--red-600);
+  border-color: var(--red-500);
+  color: white;
+}
+
+.shift-delete .file-action-btn--danger:not(.confirming) {
+  background-color: #dc2626;
+  border-color: #ef4444;
+  color: white;
+}
+
+.file-action-btn--danger.spinning .spinner-icon {
+  display: inline-block;
+}
+
+.confirm-text {
+  display: inline-block;
+  max-width: 0;
+  overflow: hidden;
+  transition: max-width 0.2s ease;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.confirming .confirm-text {
+  max-width: 100px;
+}
+
+.file-action-btn--danger.confirming,
+.file-action-btn--danger.confirming:hover {
+  background-color: #dc2626 !important;
+  border-color: #ef4444 !important;
+  color: white !important;
+  font-family: "Secondary", "Unifont", monospace;
+  font-size: 18px;
+  gap: 0.35rem;
+  white-space: nowrap;
+  transform: none;
+}
+
+.file-card-link {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background-color: var(--juice-900);
+  border: 1px solid var(--juice-700);
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  color: var(--juice-300);
+  font-family: "General", "Unifont", monospace;
+  font-size: 0.8rem;
+  text-align: left;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+
+.file-card-link-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--juice-400);
+}
+
+@media (max-width: 768px) {
+  .upldfs {
+    padding: 0 1rem;
+    min-height: 200px;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .uploaded-files-content {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .file-card {
+    padding: 0.875rem;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .file-card-name {
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .file-card-header {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .file-card-info {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .file-card-meta {
+    font-size: 0.75rem;
+  }
+
+  .file-card-link {
+    padding: 0.5rem 0.65rem;
+  }
+
+  .file-card-link-text {
+    font-size: 0.75rem;
+    white-space: normal;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+  }
+
+  .file-card-actions {
+    gap: 0.375rem;
+  }
+
+  .file-action-btn {
+    padding: 0.4rem;
+  }
+
+  .file-action-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+}

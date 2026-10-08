@@ -1,0 +1,21 @@
+# Terms of Service - [Instance Name]
+
+Last updated: [Date]
+
+Welcome to [Instance Name] ("we," "us," "the Service"), a file-hosting and link-sharing service available at [instance URL]. By uploading a file or otherwise using the Service, you agree to these Terms of Service ("Terms"). If you don't agree, don't use the Service.
+
+The Service lets anyone upload a file without creating an account and generates a shareable link. No registration, login, or payment is required. Each instance may impose its own maximum file size, retention limits, and rate limits, which are published via the server configuration endpoint and may change without notice.
+
+You agree not to upload, host, or share content that is illegal under applicable law; that depicts or facilitates child sexual abuse material, which will be reported to the relevant authorities immediately; that infringes someone else's copyright, trademark, or other intellectual property rights; that contains malware, viruses, exploits, or other malicious code; that depicts non-consensual intimate imagery; that is used for phishing, scams, doxxing, harassment, or targeted abuse; that violates the privacy or publicity rights of any person; or that you do not otherwise have the legal right to share. You also agree not to use the Service to circumvent rate limits or abuse detection, not to probe the Service's vulnerability without prior written consent, and not to use the Service in any way that could disable or impair it.
+
+We reserve the right to remove any file or block any user at our discretion, with or without notice, for violating these Terms or for any other reason.
+
+Because the Service doesn't require accounts, we cannot verify who uploaded a file. Files may be deleted for inactivity, storage limits, abuse reports, technical failure, or at our discretion. We do not provide backups and are not responsible for data loss. If you clear your cookies or lose your deletion token, we cannot recover it or re-verify ownership.
+
+You retain whatever rights you already have in files you upload. By uploading, you grant us a non-exclusive, worldwide, royalty-free license to host, store, transmit, reproduce, and display that file solely for the purpose of operating the Service. This license ends when the file is deleted.
+
+The Service is provided "as is" and "as available," with no warranties of any kind. To the fullest extent permitted by applicable law, we are not liable for any damages arising from your use of the Service. These Terms are governed by the laws of [Your Jurisdiction]. Before initiating any formal legal proceeding, both parties agree to first attempt to resolve the dispute informally. If any provision is found unenforceable, the remaining provisions continue in full force.
+
+We may update these Terms at any time. Continued use after changes are posted constitutes acceptance. Questions can be sent to [contact email].
+
+Disclaimer: This is a template only and does not constitute legal advice. You should have it reviewed by a qualified legal professional before use.

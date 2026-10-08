@@ -1,0 +1,44 @@
+---
+interface Props {
+    id?: string;
+    title?: string;
+    subtitle?: string;
+    eyebrow?: string;
+    centered?: boolean;
+    headingLevel?: "h1" | "h2" | "h3";
+}
+
+const {
+    id,
+    title = "Juicebox",
+    subtitle = "Temporary file upload service.",
+    eyebrow,
+    centered = true,
+    headingLevel = "h1",
+} = Astro.props as Props;
+
+const HeadingTag = headingLevel;
+const headerClasses = [
+    "upload-header",
+    centered ? "upload-header--centered" : "upload-header--left",
+]
+    .filter(Boolean)
+    .join(" ");
+---
+
+<header id={id} class={headerClasses}>
+    {eyebrow && <p class="upload-header__eyebrow">{eyebrow}</p>}
+
+    <HeadingTag class="upload-header__title">
+        <img src="/logo_big.webp?v=2" alt="Juicebox" class="upload-header__logo" loading="eager" fetchpriority="high" />
+        {title}
+    </HeadingTag>
+
+    {subtitle?.trim() && <p class="upload-header__subtitle">{subtitle}</p>}
+
+    <slot />
+
+    <slot name="secondary" />
+</header>
+
+

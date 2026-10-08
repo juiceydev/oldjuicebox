@@ -1,0 +1,68 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout title="Admin Panel - Juicebox">
+    <h1>Admin Panel</h1>
+    <div id="admin-status">
+        <p>Verifying authentication...</p>
+    </div>
+</AdminLayout>
+
+<script>
+    async function init() {
+        const statusEl = document.getElementById("admin-status");
+        if (!statusEl) return;
+
+        try {
+            const res = await fetch("/api/admin/check");
+            if (!res.ok) throw new Error("not authenticated");
+
+            const data = await res.json();
+
+            let versionInfo = "";
+            try {
+                const cfgRes = await fetch("/api/config");
+                if (cfgRes.ok) {
+                    const cfg = await cfgRes.json();
+                    if (cfg.version) {
+                        versionInfo = "<p>Version: v" + esc(cfg.version) + "</p>";
+                    }
+                }
+            } catch {}
+
+            statusEl.innerHTML =
+                "" +
+                "<p>Logged in as: <strong>" +
+                esc(data.username) +
+                "</strong></p>" +
+                (versionInfo ? "<br />" + versionInfo : "") +
+                "<hr><br />" +
+                '<p><a href="/admin/files">View uploaded files</a></p><br />' +
+                '<p><a href="/admin/reports">View reports</a></p><br />' +
+                '<p><a href="/admin/feedback">View feedback</a></p><br />' +
+                '<p><a href="/admin/announcement">Site announcement</a></p><br />' +
+                '<p><a href="/admin/bans">Manage banned IPs</a></p>' +
+                "<br /><hr><br />" +
+                '<p><a href="/">Back to upload</a> - <a href="/admin/logout" id="logout-link">Logout</a></p>';
+            const logoutEl = document.getElementById("logout-link");
+            if (logoutEl) {
+                logoutEl.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    location.href = "/api/admin/logout";
+                });
+            }
+        } catch {
+            statusEl.innerHTML =
+                '<p>Authentication failed. <a href="/admin/login">Go to login</a></p>';
+        }
+    }
+
+    function esc(s) {
+        return document
+            .createElement("div")
+            .appendChild(document.createTextNode(s)).parentNode.innerHTML;
+    }
+
+    init();
+</script>

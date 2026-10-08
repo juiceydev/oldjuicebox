@@ -1,0 +1,29 @@
+{
+  "name": "juicefront-epsilon",
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "gen-docs": "scripts/generate-rust-docs.sh",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@astrojs/node": "^11.0.2",
+    "@astrojs/solid-js": "^6.0.1",
+    "@sentry/astro": "^10.64.0",
+    "@spotlightjs/astro": "^3.2.6",
+    "astro": "^7.0.6",
+    "qrcode-generator": "^2.0.4",
+    "solid-js": "^1.9.7",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@playform/compress": "0.2.3",
+    "@playform/inline": "0.1.4",
+    "astro-font": "1.1.0",
+    "sharp": "^0.35.3"
+  }
+}

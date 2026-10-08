@@ -1,0 +1,243 @@
+.content-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.content-page main {
+  width: 100%;
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.content-card .act {
+  margin-top: 1.5rem;
+}
+
+.content-body {
+  position: relative;
+  background-color: rgba(var(--juice-900-rgb), 0.8);
+  border: 1px solid var(--juice-800);
+  border-radius: 1rem;
+  padding: 2rem;
+  color: var(--juice-300);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.content-body h2 {
+  font-size: 1.25rem;
+
+  color: var(--juice-100);
+  margin: 1.5rem 0 0.75rem 0;
+}
+
+.content-body h2:first-child {
+  margin-top: 0;
+}
+
+.content-body h3 {
+  font-size: 1rem;
+
+  color: var(--juice-100);
+  margin: 1.25rem 0 0.5rem 0;
+}
+
+.content-body p {
+  margin: 0 0 1rem 0;
+}
+
+.content-body p:last-child {
+  margin-bottom: 0;
+}
+
+.content-body a {
+  color: var(--orange-400);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.content-body a:hover {
+  color: var(--orange-500);
+  text-decoration: underline;
+}
+
+.content-body ul {
+  margin: 0 0 1rem 0;
+  padding-left: 1.25rem;
+}
+
+.content-body li {
+  margin-bottom: 0.5rem;
+}
+
+.content-body code,
+.content-body kbd {
+  font-family: "General", "Unifont", monospace;
+  font-size: 0.85em;
+  background-color: var(--juice-800);
+  border: 1px solid var(--juice-700);
+  border-radius: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  color: var(--juice-100);
+}
+
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 0.75rem;
+  background-color: rgba(var(--juice-800-rgb), 0.5);
+  border: 1px solid var(--juice-700);
+  border-radius: 0.5rem;
+}
+
+.shortcut-row .shortcut-keys {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.content-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .content-page {
+    padding: 1rem;
+  }
+
+  .content-body {
+    padding: 1.5rem;
+  }
+}
+
+.faq-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.faq-item {
+  border: 1px solid var(--juice-800);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background-color: rgba(var(--juice-800-rgb), 0.4);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.faq-item[open] {
+  background-color: rgba(var(--juice-800-rgb), 0.6);
+  border-color: var(--juice-700);
+}
+
+.faq-question {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--juice-100);
+  font-size: 0.95rem;
+  list-style: none;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  user-select: none;
+}
+
+.faq-question:active {
+  transform: scale(0.985);
+}
+
+.faq-question::-webkit-details-marker {
+  display: none;
+}
+
+.faq-question::marker {
+  content: "";
+}
+
+.faq-question:hover {
+  background-color: rgba(var(--juice-700), 0.3);
+}
+
+.faq-chevron {
+  display: inline-flex;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid var(--juice-400);
+  border-bottom: 2px solid var(--juice-400);
+  transform: rotate(45deg);
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 2px;
+}
+
+.faq-item[open] .faq-chevron {
+  transform: rotate(-135deg);
+  margin-bottom: -2px;
+}
+
+.faq-answer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.faq-item[open] .faq-answer {
+  grid-template-rows: 1fr;
+}
+
+.faq-answer-inner {
+  padding: 0 1rem 0.85rem 1.75rem;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.faq-answer p {
+  margin: 0;
+  color: var(--juice-300);
+}
+
+@keyframes faq-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq-question {
+    transition: none;
+  }
+
+  .faq-chevron {
+    transition: none;
+  }
+
+  .faq-answer {
+    transition: none;
+  }
+}

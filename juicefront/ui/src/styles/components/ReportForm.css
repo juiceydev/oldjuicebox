@@ -1,0 +1,243 @@
+.rpfcontainer {
+  position: relative;
+  background-color: rgba(var(--juice-900-rgb), 0.8);
+  border: 1px solid var(--juice-800);
+  border-radius: 1rem;
+  padding: 2rem;
+}
+
+.rpfcontent {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.rpfheader {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.report-icon-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: var(--juice-800);
+  border: 1px solid var(--juice-700);
+  border-radius: 1rem;
+  margin-bottom: 1rem;
+}
+
+.report-icon {
+  color: var(--orange-400);
+}
+
+.rpftitle {
+  font-size: 1.75rem;
+
+  color: var(--juice-100);
+  margin: 0 0 0.5rem 0;
+}
+
+.rpfsubtitle {
+  font-size: 0.95rem;
+  color: var(--juice-400);
+  margin: 0;
+}
+
+.report-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.rpferror {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--red-500);
+  border-radius: 0.5rem;
+  color: var(--red-500);
+  font-size: 0.875rem;
+}
+
+.rpferror svg {
+  flex-shrink: 0;
+}
+
+.report-success-banner {
+  padding: 0.875rem 1rem;
+  background-color: rgba(34, 197, 94, 0.1);
+  border: 1px solid #22c55e;
+  border-radius: 0.5rem;
+  color: #22c55e;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.report-success-banner p {
+  margin: 0;
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--juice-800);
+  border: 1px solid var(--juice-700);
+  border-radius: 0.5rem;
+  color: var(--juice-100);
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--orange-500);
+}
+
+.form-select:focus-visible {
+  outline: 2px solid var(--orange-400);
+  outline-offset: 1px;
+}
+
+.form-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--juice-800);
+  border: 1px solid var(--juice-700);
+  border-radius: 0.5rem;
+  color: var(--juice-100);
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 100px;
+  transition: all 0.2s ease;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--orange-500);
+}
+
+.form-textarea:focus-visible {
+  outline: 2px solid var(--orange-400);
+  outline-offset: 1px;
+}
+
+.form-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.required {
+  color: var(--red-500);
+}
+
+.rpfactions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.report-btn {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.report-btn--secondary {
+  background-color: var(--juice-800);
+  border-color: var(--juice-700);
+  color: var(--juice-300);
+}
+
+.report-btn--secondary:hover:not(:disabled) {
+  background-color: var(--juice-700);
+  color: var(--juice-100);
+}
+
+.report-btn--primary {
+  background-color: var(--juice-800);
+  color: white;
+}
+
+.report-btn--primary:hover:not(:disabled) {
+  background-color: var(--orange-600);
+}
+
+.report-btn--primary:active:not(:disabled) {
+  background-color: var(--orange-600);
+}
+
+.report-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.report-btn:focus-visible {
+  outline: 2px solid var(--orange-400);
+  outline-offset: 2px;
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rpffooter {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--juice-800);
+}
+
+.report-footer-text {
+  font-size: 0.85rem;
+  color: var(--juice-500);
+  text-align: center;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .rpfcontainer {
+    padding: 1.5rem;
+  }
+
+  .rpfcontent {
+    max-width: 100%;
+  }
+
+  .rpftitle {
+    font-size: 1.5rem;
+  }
+
+  .rpfactions {
+    flex-direction: column-reverse;
+  }
+
+  .report-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

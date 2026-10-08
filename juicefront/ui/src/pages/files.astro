@@ -1,0 +1,98 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import FilesCard from "../components/FilesCard.astro";
+import { getFormattedCommitLabel, getRepoUrl } from "../lib/metadata";
+import { checkBackendHealth } from "../lib/health";
+import { checkUserBan } from "../lib/ban";
+import type { ServerFile } from "../lib/types";
+import { t, resolveLocale } from "../i18n";
+
+const locale = resolveLocale(Astro.currentLocale);
+const backendOffline = !(await checkBackendHealth());
+const { banned } = await checkUserBan(Astro.request);
+const footerCommit = getFormattedCommitLabel();
+const canonicalUrl = getRepoUrl();
+
+const customActions = [
+    {
+        id: "back",
+        label: t(locale, "nav.back"),
+        icon: "back",
+        ariaLabel: t(locale, "nav.back_aria"),
+    },
+    { id: "report", label: t(locale, "nav.report"), icon: "report" },
+    { id: "more", label: t(locale, "nav.more"), icon: "more" },
+];
+
+const serverFiles: ServerFile[] = [];
+
+if (!backendOffline) {
+    const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+    const pairs: { id: string; token: string }[] = [];
+    for (const part of cookieHeader.split(";")) {
+        const trimmed = part.trim();
+        if (trimmed.startsWith("jb_files=")) {
+            try {
+                const decoded = atob(trimmed.slice("jb_files=".length).replace(/-/g, "+").replace(/_/g, "/"));
+                const arr = JSON.parse(decoded);
+                if (Array.isArray(arr)) {
+                    for (const entry of arr) {
+                        if (entry.id && entry.token) {
+                            pairs.push({ id: entry.id, token: entry.token });
+                        }
+                    }
+                }
+            } catch {}
+            break;
+        }
+    }
+
+    if (pairs.length > 0) {
+        try {
+            const BACKEND_URL = process.env.JUICEBACK_URL || "";
+            const res = await fetch(`${BACKEND_URL}/api/owned-files`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pairs }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const now = Math.floor(Date.now() / 1000);
+                for (const f of data.files ?? []) {
+                    if (f.expires_at > now) {
+                        serverFiles.push({
+                            id: f.id,
+                            filename: f.filename ?? "",
+                            mime_type: f.mime_type ?? "",
+                            size_bytes: f.size_bytes ?? 0,
+                            uploaded_at: f.uploaded_at ?? 0,
+                            expires_at: f.expires_at ?? 0,
+                            url: f.url ?? "",
+                            delete_token: "",
+                            storage_host: f.storage_host ?? "",
+                        });
+                    }
+                }
+            }
+        } catch {}
+    }
+}
+---
+
+<BaseLayout
+    title={`${t(locale, "files.title")} - Juicebox`}
+    description={t(locale, "files.subtitle")}
+    canonical={canonicalUrl}
+    bodyClass="files-page"
+    backendOffline={backendOffline}
+    isBanned={banned}
+>
+    <main id="main-content" transition:animate="none">
+        <FilesCard
+            footerCommit={footerCommit}
+            footerRepoUrl={canonicalUrl}
+            actions={customActions}
+            initialFiles={serverFiles}
+        />
+    </main>
+</BaseLayout>

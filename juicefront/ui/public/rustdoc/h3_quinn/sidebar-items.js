@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["convert_connection_error","convert_read_error_to_stream_error","convert_write_error_to_stream_error"],"struct":["AcceptBi","AcceptUni","BidiStream","Connection","Endpoint","OpenBi","OpenStreams","OpenUni","RecvStream","SendStream","VarInt"],"type":["BoxStreamSync","ReadChunkFuture"]};

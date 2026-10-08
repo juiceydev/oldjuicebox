@@ -1,0 +1,7 @@
+---
+import UploadTraySolid from "./UploadTray.tsx";
+import { resolveLocale } from "../i18n";
+const locale = resolveLocale(Astro.currentLocale);
+---
+
+<UploadTraySolid client:idle locale={locale} transition:persist="upload-tray" transition:persist-props />

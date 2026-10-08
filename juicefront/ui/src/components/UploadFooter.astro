@@ -1,0 +1,69 @@
+---
+interface FooterLink {
+    label: string;
+    href: string;
+    external?: boolean;
+    ariaLabel?: string;
+}
+
+interface Props {
+    commit?: string;
+    message?: string;
+    showDivider?: boolean;
+    repoUrl?: string;
+    links?: FooterLink[];
+}
+
+const {
+    commit = "commit pls change dynamically",
+    message = "",
+    showDivider = true,
+    repoUrl = "https://github.com/create-juicey-app/juicebox2",
+    links = [],
+} = Astro.props as Props;
+
+const hasLinks = Array.isArray(links) && links.length > 0;
+const footerClass = ["footr", showDivider ? "footr--divd" : null]
+    .filter(Boolean)
+    .join(" ");
+---
+
+<footer class={footerClass} data-footr>
+    <div class="footr__primary">
+        {message && <p class="footr__message">{message}</p>}
+        <a
+            class="footr__commit footr__link"
+            href={repoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            {commit}
+        </a>
+    </div>
+
+    {
+        hasLinks && (
+            <nav class="footr__links" aria-label="Additional footer links">
+                {links.map((link, index) => {
+                    const target = link.external ? "_blank" : undefined;
+                    const rel = link.external
+                        ? "noopener noreferrer"
+                        : undefined;
+                    return (
+                        <a
+                            href={link.href}
+                            target={target}
+                            rel={rel}
+                            aria-label={link.ariaLabel ?? link.label}
+                            class="footr__link footr__link--nav"
+                        >
+                            {link.label}
+                        </a>
+                    );
+                })}
+            </nav>
+        )
+    }
+
+    <slot />
+</footer>

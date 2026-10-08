@@ -1,0 +1,495 @@
+---
+import { getIconSvg } from "../lib/icons";
+import { t, type Locale } from "../i18n";
+
+const { locale = "en" } = Astro.props as { locale?: Locale };
+
+const skyscraperKey = import.meta.env.PUBLIC_ADSTERRA_SKYSCRAPER_160X600;
+const railKey = import.meta.env.PUBLIC_ADSTERRA_SKYSCRAPER_160X300;
+const leaderboardKey = import.meta.env.PUBLIC_ADSTERRA_LEADERBOARD_468X60;
+const mobileKey = import.meta.env.PUBLIC_ADSTERRA_MOBILE_BANNER_320X50;
+
+const adZones = [
+  { holder: "box-zone-160-600-l", key: skyscraperKey, format: "iframe", width: 160, height: 600 },
+  { holder: "box-zone-160-600-r", key: skyscraperKey, format: "iframe", width: 160, height: 600 },
+  { holder: "box-zone-160-300-l", key: railKey, format: "iframe", width: 160, height: 300 },
+  { holder: "box-zone-160-300-r", key: railKey, format: "iframe", width: 160, height: 300 },
+  { holder: "box-zone-468-60", key: leaderboardKey, format: "iframe", width: 468, height: 60 },
+  { holder: "box-zone-320-50", key: mobileKey, format: "iframe", width: 320, height: 50 },
+].filter((zone) => zone.key);
+
+const fallbackTitle = t(locale, "adblock.title");
+const fallbackText = t(locale, "adblock.text");
+const fallbackAria = t(locale, "adblock.aria");
+const shieldIcon = getIconSvg("shield");
+
+const adCookie = Astro.request.headers.get("cookie") || "";
+const adEligibleSSR = adCookie.split("; ").some((c) => {
+  const eq = c.indexOf("=");
+  return (
+    eq > 0 &&
+    c.slice(0, eq) === "ADTESTING" &&
+    c.slice(eq + 1).toUpperCase() === "TRUE"
+  );
+});
+
+const railLeftZones = [
+  { holder: "box-zone-160-600-l", w: 160, h: 600, cls: "box-slot--rail" },
+  { holder: "box-zone-160-300-l", w: 160, h: 300, cls: "box-slot--rail" },
+];
+const railRightZones = [
+  { holder: "box-zone-160-300-r", w: 160, h: 300, cls: "box-slot--rail" },
+  { holder: "box-zone-160-600-r", w: 160, h: 600, cls: "box-slot--rail" },
+];
+const belowZones = [
+  { holder: "box-zone-468-60", key: leaderboardKey, w: 468, h: 60, cls: "box-slot--banner" },
+  { holder: "box-zone-320-50", key: mobileKey, w: 320, h: 50, cls: "box-slot--mobile" },
+].filter((zone) => zone.key);
+---
+
+<aside class="box-rail box-rail--left">
+  {railLeftZones.map((z) => (
+    <div id={z.holder} class={`box-slot ${z.cls}`} data-box-w={z.w} data-box-h={z.h} data-box-loading={adEligibleSSR ? "" : undefined} style={`--box-w:${z.w}px;--box-h:${z.h}px`}>
+      <div class="box-shimmer" aria-hidden="true"></div>
+      <div class="box-note" data-box-note="" role="note" aria-label={fallbackAria}>
+        <span class="box-note__icon" aria-hidden="true" set:html={shieldIcon} />
+        <span class="box-note__title">{fallbackTitle}</span>
+        <span class="box-note__text">{fallbackText}</span>
+      </div>
+    </div>
+  ))}
+</aside>
+<aside class="box-rail box-rail--right">
+  {railRightZones.map((z) => (
+    <div id={z.holder} class={`box-slot ${z.cls}`} data-box-w={z.w} data-box-h={z.h} data-box-loading={adEligibleSSR ? "" : undefined} style={`--box-w:${z.w}px;--box-h:${z.h}px`}>
+      <div class="box-shimmer" aria-hidden="true"></div>
+      <div class="box-note" data-box-note="" role="note" aria-label={fallbackAria}>
+        <span class="box-note__icon" aria-hidden="true" set:html={shieldIcon} />
+        <span class="box-note__title">{fallbackTitle}</span>
+        <span class="box-note__text">{fallbackText}</span>
+      </div>
+    </div>
+  ))}
+</aside>
+
+{belowZones.length > 0 && (
+<div class="box-below">
+  {belowZones.map((z) => (
+    <div id={z.holder} class={`box-slot ${z.cls}`} data-box-w={z.w} data-box-h={z.h} data-box-loading={adEligibleSSR ? "" : undefined} style={`--box-w:${z.w}px;--box-h:${z.h}px`}>
+      <div class="box-shimmer" aria-hidden="true"></div>
+      <div class="box-note" data-box-note="" role="note" aria-label={fallbackAria}>
+        <span class="box-note__icon" aria-hidden="true" set:html={shieldIcon} />
+        <span class="box-note__title">{fallbackTitle}</span>
+        <span class="box-note__text">{fallbackText}</span>
+      </div>
+    </div>
+  ))}
+</div>
+)}
+
+<script define:vars={{ adZones }}>
+  // Zones load sequentially so invoke.js always reads its own atOptions
+  // before the next zone overwrites the global.
+  const ZONES = adZones;
+
+  // grace like the roblox game
+  const BLOCKED_GRACE_MS = 4000;
+  const WATCH_MAX_MS = BLOCKED_GRACE_MS + 30000;
+
+  function adFlagFromCookie() {
+    try {
+      return document.cookie.split("; ").some((c) => {
+        const eq = c.indexOf("=");
+        return (
+          eq > 0 &&
+          c.slice(0, eq) === "ADTESTING" &&
+          c.slice(eq + 1).toUpperCase() === "TRUE"
+        );
+      });
+    } catch {
+      return false;
+    }
+  }
+
+  function adTestEligible() {
+    return adFlagFromCookie();
+  }
+
+  function injectZone(zone, done) {
+    const holder = document.getElementById(zone.holder);
+    if (!holder || holder.dataset.boxInjected) {
+      if (done) done();
+      return;
+    }
+    holder.dataset.boxInjected = "1";
+    holder.dataset.boxAt = String(Date.now());
+    const opts = document.createElement("script");
+    opts.textContent =
+      "atOptions = { 'key' : '" + zone.key +
+      "', 'format' : '" + zone.format +
+      "', 'height' : " + zone.height +
+      ", 'width' : " + zone.width +
+      ", 'params' : {} };";
+    const invoke = document.createElement("script");
+    invoke.src = "https://www.highperformanceformat.com/" + zone.key + "/invoke.js";
+    invoke.async = true;
+    if (done) {
+      invoke.onload = done;
+      invoke.onerror = () => {
+        // incase vpn or other
+        cascadeFailed = true;
+        markAllBlocked();
+        done();
+      };
+    }
+    holder.appendChild(opts);
+    holder.appendChild(invoke);
+  }
+
+  function markAllBlocked() {
+    ZONES.forEach((zone) => {
+      const holder = document.getElementById(zone.holder);
+      if (!holder) return;
+      if (holder.dataset.boxOk || adInHolder(holder)) return;
+      holder.setAttribute("data-box-blocked", "");
+      holder.removeAttribute("data-box-loading");
+    });
+  }
+
+  function adInHolder(holder) {
+    const iframe = holder.querySelector("iframe");
+    if (iframe && iframe.offsetWidth > 0 && iframe.offsetHeight > 0) {
+      return true;
+    }
+    for (const child of holder.children) {
+      if (child.tagName === "SCRIPT") continue;
+      if (
+        child.classList &&
+        (child.classList.contains("box-note") ||
+          child.classList.contains("box-shimmer"))
+      )
+        continue;
+      const rect = child.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) return true;
+    }
+    return false;
+  }
+
+  function markHolderLoaded(holder) {
+    if (holder.dataset.boxOk) return;
+    holder.dataset.boxOk = "1";
+    holder.removeAttribute("data-box-blocked");
+    holder.removeAttribute("data-box-loading");
+  }
+
+  function armLoadWatcher(holder) {
+    const obs = new MutationObserver(() => {
+      const iframe = holder.querySelector("iframe");
+      if (!iframe || iframe.dataset.boxIwatched) return;
+      iframe.dataset.boxIwatched = "1";
+      obs.disconnect();
+      iframe.addEventListener("load", () => {
+        if (!iframe.src.startsWith("about:")) markHolderLoaded(holder);
+      });
+    });
+    obs.observe(holder, { childList: true, subtree: true });
+  }
+
+  function watchZones() {
+    const tick = setInterval(() => {
+      ZONES.forEach((zone) => {
+        const holder = document.getElementById(zone.holder);
+        if (!holder) return;
+
+        if (holder.dataset.boxInjected && !holder.dataset.boxWatched) {
+          holder.dataset.boxWatched = "1";
+          holder.style.setProperty("--box-w", zone.width + "px");
+          holder.style.setProperty("--box-h", zone.height + "px");
+          holder.dataset.boxOrient =
+            zone.width >= zone.height * 1.4 ? "wide" : "tall";
+          holder.dataset.boxStarted =
+            String(Number(holder.dataset.boxAt) || Date.now());
+          armLoadWatcher(holder);
+        }
+
+        if (!holder.dataset.boxInjected || holder.dataset.boxOk) return;
+        if (adInHolder(holder)) {
+          markHolderLoaded(holder);
+          return;
+        }
+        if (Date.now() - Number(holder.dataset.boxStarted) >= BLOCKED_GRACE_MS) {
+          holder.setAttribute("data-box-blocked", "");
+          holder.removeAttribute("data-box-loading");
+        }
+      });
+    }, 1000);
+    setTimeout(() => clearInterval(tick), WATCH_MAX_MS + 5000);
+  }
+
+  let cascadeFailed = false;
+
+  function injectAds() {
+    if (!adTestEligible()) return;
+    let index = 0;
+    function next() {
+      if (cascadeFailed) return;
+      if (index < ZONES.length) injectZone(ZONES[index++], next);
+    }
+    next();
+
+    watchZones();
+  }
+
+  injectAds();
+  document.addEventListener("astro:page-load", injectAds);
+</script>
+
+<style>
+
+  :global(.content) {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 42rem) 160px;
+    column-gap: 1rem;
+    row-gap: 1rem;
+    align-items: start;
+    justify-content: center;
+  }
+
+  :global(.content > main) {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .box-rail {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    align-self: stretch;
+  }
+
+  .box-rail--left {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .box-rail--right {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .content:has(.files-card [data-files-empty]:not([hidden])) .box-rail--right {
+    display: none;
+  }
+
+  .content:has(.files-card [data-files-empty]:not([hidden])) .box-rail--left .box-slot[data-box-w="160"][data-box-h="300"] {
+    display: none;
+  }
+
+  .box-below {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 0;
+  }
+
+  .box-slot {
+    position: relative;
+    max-width: 100%;
+  }
+
+  :global(html.no-js) .box-slot {
+    display: none;
+  }
+
+  .box-slot[data-box-loading],
+  .box-slot[data-box-ok],
+  .box-slot[data-box-blocked] {
+    width: var(--box-w, 160px);
+    height: var(--box-h, 600px);
+  }
+
+  .box-slot--mobile {
+    display: none;
+  }
+
+  .box-note {
+    display: none;
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    padding: 0.6rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    text-align: center;
+    color: var(--juice-400);
+    background: var(--juice-900);
+    border: 1px solid var(--juice-800);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+
+  .box-slot[data-box-blocked] .box-note {
+    display: flex;
+    animation: box-note-in 0.3s ease both;
+  }
+
+  .box-shimmer {
+    display: none;
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    border-radius: 0.5rem;
+    border: 1px solid var(--juice-800);
+    background-color: var(--juice-900);
+    overflow: hidden;
+  }
+
+  .box-shimmer::before {
+    content: "";
+    position: absolute;
+    inset: -100%;
+    background-image: linear-gradient(
+      90deg,
+      rgba(245, 237, 234, 0) 30%,
+      rgba(245, 237, 234, 0.08) 50%,
+      rgba(245, 237, 234, 0) 70%
+    );
+    background-size: 60% 100%;
+    background-repeat: repeat;
+    animation: box-shimmer-anim 0.8s linear infinite;
+    transform: rotate(-4deg);
+    will-change: transform;
+    pointer-events: none;
+  }
+
+  .box-slot[data-box-loading] .box-shimmer {
+    display: block;
+    opacity: 1;
+    animation: box-shimmer-in 0.25s ease both;
+  }
+
+  .box-slot[data-box-ok] .box-shimmer,
+  .box-slot[data-box-blocked] .box-shimmer {
+    display: block;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+    animation: none;
+  }
+
+  @keyframes box-shimmer-anim {
+    from {
+      transform: rotate(-4deg) translateX(0);
+    }
+    to {
+      transform: rotate(-4deg) translateX(-60%);
+    }
+  }
+
+  @keyframes box-shimmer-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes box-note-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .box-shimmer::before {
+      animation: none;
+      background-image: none;
+    }
+
+    .box-shimmer,
+    .box-note {
+      animation: none;
+      transition: none;
+    }
+  }
+
+  .box-note__icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    margin-bottom: 0.4rem;
+  }
+
+  .box-note__icon :global(svg) {
+    width: 36px;
+    height: 36px;
+    display: block;
+  }
+
+  .box-note__title {
+    font-size: clamp(0.72rem, 1.2vw, 0.9rem);
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .box-note__text {
+    font-size: clamp(0.58rem, 0.9vw, 0.72rem);
+    line-height: 1.25;
+  }
+
+  .box-slot[data-box-orient="wide"][data-box-blocked] .box-note {
+    flex-direction: row;
+    gap: 0.6rem;
+    padding: 0.35rem 0.75rem;
+    text-align: left;
+  }
+
+  .box-slot[data-box-orient="wide"][data-box-blocked] .box-note__icon {
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 960px) {
+    :global(.content) {
+      grid-template-columns: 1fr;
+    }
+
+    :global(.content > main) {
+      grid-column: 1;
+    }
+
+    .box-rail {
+      display: none;
+    }
+
+    .box-below {
+      grid-column: 1;
+    }
+  }
+
+  @media (max-height: 900px) {
+    .box-slot[data-box-w="160"][data-box-h="300"] {
+      display: none;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .box-slot--banner {
+      display: none;
+    }
+
+    .box-slot--mobile {
+      display: block;
+    }
+  }
+</style>

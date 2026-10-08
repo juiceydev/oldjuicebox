@@ -1,0 +1,85 @@
+@font-face {
+  font-family: "Title";
+  src: url("/title.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.upload-header--centered {
+  text-align: center;
+}
+
+.upload-header--left {
+  text-align: left;
+}
+
+.upload-header__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  color: var(--orange-400);
+  margin-bottom: 0.5rem;
+  display: inline-block;
+  animation: fade-in-up 0.5s ease-out backwards;
+  animation-delay: 0.1s;
+}
+
+.upload-header__title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  color: var(--orange-500);
+  font-size: 2.5rem;
+
+  font-family: "Title", "Unifont", monospace;
+  text-transform: uppercase;
+  text-shadow:
+    4px 0 0 #000,
+    -4px 0 0 #000,
+    0 4px 0 #000,
+    0 -4px 0 #000;
+  animation: fade-in-up 0.5s ease-out backwards;
+  animation-delay: 0.2s;
+}
+.upload-header__logo {
+  width: 4rem;
+  height: 4rem;
+  object-fit: contain;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.upload-header--left .upload-header__title {
+  justify-content: flex-start;
+}
+
+.upload-header__subtitle {
+  color: var(--juice-300);
+  line-height: 1.6;
+  max-width: 40rem;
+  margin-left: auto;
+  margin-right: auto;
+  font-family: "Secondary", "Unifont", monospace;
+  font-size: 18px;
+  animation: fade-in-up 0.5s ease-out backwards;
+  animation-delay: 0.3s;
+}
+
+.upload-header--left .upload-header__subtitle {
+  margin-left: 0;
+  margin-right: 0;
+}

@@ -1,0 +1,321 @@
+---
+import UploadCardSolid from "./UploadCard.tsx";
+import { iconSvgHtml } from "../lib/icons";
+import { formatMaxSize, formatSize } from "../lib/format";
+import { t, resolveLocale } from "../i18n";
+import { getMoreMenuItems } from "../lib/more-menu";
+import { readCookieHost, resolveEffectiveConfig, fetchCobaltServices } from "../lib/server-host";
+import { ttlLabel } from "../lib/retention";
+const locale = resolveLocale(Astro.currentLocale);
+const localePrefix = locale === "en" ? "" : `/${locale}`;
+const lp = (path: string) => `${localePrefix}${path}`;
+
+interface Props {
+  uploadedFile?: string | null;
+}
+
+const { uploadedFile = null } = Astro.props;
+
+let parsed: { id: string; filename: string; mime_type: string; size_bytes: number; url: string; delete_token: string } | null = null;
+if (uploadedFile) {
+  try { parsed = JSON.parse(uploadedFile); } catch {}
+}
+
+function mimeIcon(mime: string): string {
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("video/")) return "video";
+  if (mime.startsWith("audio/")) return "audio-waveform";
+  if (/archive|zip|gzip|rar|7z|tar/.test(mime)) return "archive";
+  if (/json|xml|javascript|html|css/.test(mime)) return "code";
+  return "file-text";
+}
+
+let maxFileSizeBytes = 524288000;
+let allowedTtlHours = [0.5, 1, 6, 12, 24, 72, 168];
+let defaultTtlHours = 24;
+let cobaltEnabled = false;
+const savedHost = readCookieHost(Astro.request.headers.get("cookie"));
+const { config: cfg } = await resolveEffectiveConfig(savedHost);
+if (typeof cfg.max_file_size_bytes === "number") maxFileSizeBytes = cfg.max_file_size_bytes;
+if (Array.isArray(cfg.allowed_ttl_hours)) allowedTtlHours = cfg.allowed_ttl_hours;
+if (typeof cfg.default_ttl_hours === "number") defaultTtlHours = cfg.default_ttl_hours;
+if (typeof cfg.cobalt === "boolean") cobaltEnabled = cfg.cobalt;
+const cobaltServices = cobaltEnabled ? await fetchCobaltServices() : [];
+
+const RETENTION_OPTIONS = allowedTtlHours.map(h => ({
+  label: ttlLabel(locale, h),
+  hours: h,
+}));
+const RETENTION_DEFAULT_INDEX = Math.max(0, RETENTION_OPTIONS.findIndex(o => o.hours === defaultTtlHours));
+
+const maxUploadSize = formatMaxSize(maxFileSizeBytes);
+
+const MORE_MENU_ITEMS = getMoreMenuItems(locale, lp);
+---
+
+<div class="upload-card" id="upload-card" data-upload-card="" style="view-transition-name: main-card;" aria-labelledby="upload-card-header">
+  <header id="upload-card-header" class="upload-header upload-header--centered">
+    <h1 class="upload-header__title">
+      <img src="/logo_big.webp?v=2" alt="Juicebox" class="upload-header__logo" width="64" height="64" loading="eager" fetchpriority="high" />
+      Juicebox²
+    </h1>
+    <p class="upload-header__subtitle">{t(locale, "upload.subtitle")}</p>
+  </header>
+
+  <a href="#host-modal" data-host-btn="" class="host-btn host-btn--card" title={t(locale, "upload.settings_aria")} aria-label={t(locale, "upload.settings_aria")}>
+    <span set:html={iconSvgHtml("settings", 24)} />
+  </a>
+
+  <form class="upload-form" data-upload-form="" data-cobalt-services={cobaltServices.join(",")} method="POST" action="/upload" enctype="multipart/form-data">
+    <section class="rttoolbar" data-rttoolbar="" aria-labelledby="upload-card-retention-label">
+      <div class="rttinfo">
+        <div class="rttlabel-group">
+          <span class="rtticon" set:html={iconSvgHtml("clock", 24)} />
+          <span id="upload-card-retention-label" class="rttlabel">{t(locale, "upload.retention")}</span>
+        </div>
+      </div>
+      <fieldset class="rtt-options">
+        <legend class="sr-only">{t(locale, "upload.retention_hint")}</legend>
+        {RETENTION_OPTIONS.map((opt, i) => (
+          <label class="rtt-option">
+            <input type="radio" name="ttl_hours" value={opt.hours} checked={i === RETENTION_DEFAULT_INDEX} />
+            <span>{opt.label}</span>
+          </label>
+        ))}
+      </fieldset>
+    </section>
+
+    <input type="radio" name="upload_mode" id="mode-file" value="file" checked class="tab-radio" aria-label={t(locale, "upload.tab_file")} />
+    <input type="radio" name="upload_mode" id="mode-text" value="text" class="tab-radio" aria-label={t(locale, "upload.tab_text")} />
+    {cobaltEnabled && (
+      <input type="radio" name="upload_mode" id="mode-cobalt" value="cobalt" class="tab-radio" aria-label={t(locale, "upload.tab_cobalt")} />
+    )}
+
+    <div class="upload-tabs nojs-only">
+      <label for="mode-file" class="upload-tab">{t(locale, "upload.tab_file")}</label>
+      <label for="mode-text" class="upload-tab">{t(locale, "upload.tab_text")}</label>
+      {cobaltEnabled && (
+        <label for="mode-cobalt" class="upload-tab">{t(locale, "upload.tab_cobalt")}</label>
+      )}
+    </div>
+
+    <div class="upload-tabs upload-tabs--mobile">
+      <label for="mode-file" class="upload-tab">{t(locale, "upload.tab_file")}</label>
+      {cobaltEnabled && (
+        <label for="mode-cobalt" class="upload-tab">{t(locale, "upload.tab_video")}</label>
+      )}
+      <label for="mode-text" class="upload-tab">{t(locale, "upload.tab_text")}</label>
+    </div>
+
+    <div class="upload-mode-wrapper" data-mode-wrapper="">
+      <div class="upload-mode-file" data-mode-file="">
+        <label class="drop-zone" data-drop-zone="" for="dropzone-input" data-dropzone-offline="">
+          <div class="animated-grid-container" aria-hidden="true"><div class="animated-grid"></div></div>
+          <div class="drop-icon-wrapper">
+            <span set:html={iconSvgHtml("upload", 64)} class="drop-icon" />
+          </div>
+          <div class="drop-text">
+            <p class="drop-text-primary">{t(locale, "upload.drop_primary")}</p>
+            <p class="drop-file-selected">{t(locale, "upload.drop_selected")}</p>
+            <p class="drop-text-secondary">{t(locale, "upload.drop_secondary")}</p>
+            <div class="drop-text-meta" data-drop-max-template={t(locale, "upload.drop_max")} set:html={t(locale, "upload.drop_max", { size: `<span data-drop-max-size>${maxUploadSize}</span>` })}></div>
+          </div>
+          <div class="drop-zone-offline" data-dropzone-offline-overlay="">
+            <span set:html={iconSvgHtml("x", 48)} class="drop-offline-icon" />
+            <p class="drop-offline-primary">{t(locale, "upload.drop_offline")}</p>
+            <p class="drop-offline-secondary">{t(locale, "upload.drop_offline_desc")}</p>
+          </div>
+          <input id="dropzone-input" class="drop-zone__input" type="file" name="file" multiple required />
+        </label>
+        <button type="submit" class="report-btn report-btn--primary upload-submit" data-upload-submit="">
+          <div class="animated-grid-container" aria-hidden="true"><div class="animated-grid"></div></div>
+          <span style="position:relative;z-index:1">{t(locale, "upload.button")}</span>
+        </button>
+      </div>
+
+      <div class="upload-mode-text" data-mode-text="">
+        <div class="text-editor" data-text-editor="">
+          <div class="animated-grid-container" aria-hidden="true"><div class="animated-grid"></div></div>
+          <textarea class="text-editor-textarea" data-text-textarea="" name="paste_text" placeholder={t(locale, "upload.text_placeholder")}></textarea>
+          <div class="text-editor-actions">
+            <button type="button" class="text-editor-cancel js-only" data-text-cancel="">{t(locale, "upload.text_cancel")}</button>
+            <button type="button" class="text-editor-upload js-only" data-text-upload="">{t(locale, "upload.text_upload")}</button>
+            <noscript>
+              <button type="submit" class="text-editor-submit" formnovalidate="">{t(locale, "upload.text_submit")}</button>
+            </noscript>
+          </div>
+        </div>
+      </div>
+
+      {cobaltEnabled && (
+        <div class="upload-mode-cobalt" data-mode-cobalt="">
+          <div class="text-editor cobalt-editor">
+            <div class="animated-grid-container" aria-hidden="true"><div class="animated-grid"></div></div>
+            <div class="cobalt-branding">
+              <img src="/logo.png?v=2" alt="" width="24" height="24" loading="lazy" />
+              <span class="cobalt-branding__name">Juicebox²</span>
+              <span class="cobalt-branding__x">&times;</span>
+              <img src="/cobalt.png" alt="" width="22" height="24" loading="lazy" />
+              <a class="cobalt-branding__link" href="https://cobalt.tools" target="_blank" rel="noopener noreferrer">Cobalt.tools</a>
+            </div>
+            <details class="services-info">
+              <summary title={t(locale, "upload.services_title")} aria-label={t(locale, "upload.services_title")}>
+                <span set:html={iconSvgHtml("info", 24)} />
+              </summary>
+              <div class="services-info__tip" role="tooltip">
+                <strong>{t(locale, "upload.services_title")}</strong>
+                <div class="services-info__cards" data-services-cards="">
+                  {cobaltServices.length > 0 ? (
+                    cobaltServices.map((svc) => <code class="services-info__card">{svc}</code>)
+                  ) : (
+                    <code class="services-info__card services-info__loading">…</code>
+                  )}
+                </div>
+              </div>
+            </details>
+            <textarea class="text-editor-textarea" data-cobalt-textarea="" name="cobalt_url" placeholder={t(locale, "upload.cobalt_placeholder")} spellcheck="false"></textarea>
+            <div class="cobalt-bottom">
+              <div class="cobalt-settings js-only" data-cobalt-settings="">
+                <label class="cobalt-option select-option--toggle" title={t(locale, "upload.cobalt_audio_only")}>
+                  <input
+                    type="checkbox"
+                    data-cobalt-audio-only=""
+                    aria-label={t(locale, "upload.cobalt_audio_only")}
+                  />
+                  <span class="select-option__icon select-option__check" aria-hidden="true">
+                    <span class="check-off"><Fragment set:html={iconSvgHtml("checkbox", 24)} /></span>
+                    <span class="check-on"><Fragment set:html={iconSvgHtml("checkbox-on", 24)} /></span>
+                  </span>
+                  <span>{t(locale, "upload.cobalt_audio_only")}</span>
+                </label>
+                <label class="cobalt-option" data-cobalt-quality-row="">
+                  <span>{t(locale, "upload.cobalt_quality")}</span>
+                  <select data-cobalt-quality="">
+                    <option value="max" selected>Max</option>
+                    <option value="2160">2160p</option>
+                    <option value="1440">1440p</option>
+                    <option value="1080">1080p</option>
+                    <option value="720">720p</option>
+                    <option value="480">480p</option>
+                    <option value="360">360p</option>
+                  </select>
+                </label>
+                <label class="cobalt-option" data-cobalt-container-row="">
+                  <span>{t(locale, "upload.cobalt_container")}</span>
+                  <select data-cobalt-container="">
+                    <option value="auto" selected>Auto</option>
+                    <option value="mp4">MP4</option>
+                    <option value="webm">WebM</option>
+                    <option value="mkv">MKV</option>
+                  </select>
+                </label>
+                <label class="cobalt-option" data-cobalt-format-row="" hidden>
+                  <span>{t(locale, "upload.cobalt_format")}</span>
+                  <select data-cobalt-format="">
+                    <option value="best" selected>Best</option>
+                    <option value="mp3">MP3</option>
+                    <option value="opus">Opus</option>
+                    <option value="ogg">OGG</option>
+                    <option value="wav">WAV</option>
+                  </select>
+                </label>
+                <label class="cobalt-option" data-cobalt-better-audio-row="" hidden>
+                  <span>{t(locale, "upload.cobalt_better_audio")}</span>
+                  <select data-cobalt-better-audio-mode="">
+                    <option value="standard" selected>Standard</option>
+                    <option value="enhanced">Enhanced</option>
+                  </select>
+                </label>
+              </div>
+              <div class="text-editor-actions">
+                <button type="button" class="text-editor-cancel js-only" data-cobalt-cancel="">{t(locale, "upload.text_cancel")}</button>
+                <button type="button" class="text-editor-upload js-only" data-cobalt-fetch="">
+                  <span style="position:relative;z-index:1">{t(locale, "upload.cobalt_fetch")}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </form>
+
+  <p class="upload-paste-hint">{t(locale, "upload.paste_hint")}</p>
+
+  <section class="file-list-container" data-file-list="" aria-live="polite">
+    <div class="scroll-element scroll-cover-top" aria-hidden="true"></div>
+    <div class="scroll-element sticky-shadow-top" aria-hidden="true"></div>
+    <UploadCardSolid client:idle uploadedFile={uploadedFile} locale={locale} />
+    {parsed && (
+      <noscript>
+        <style>[data-component="upload-card"] { display: none !important; }</style>
+        <div class="file-item complete" role="listitem" data-file-id={parsed.id} data-delete-token={parsed.delete_token} data-url={parsed.url} data-server-rendered="">
+          <div class="file-item-header">
+            <div class="file-card-icon" set:html={iconSvgHtml(mimeIcon(parsed.mime_type), 24)} />
+            <div class="file-info-left">
+              <span class="file-name">{parsed.filename}</span>
+              <span class="file-size">{formatSize(parsed.size_bytes)}</span>
+            </div>
+          </div>
+          <div class="file-action-area complete">
+            <a href={parsed.url} class="copy-bar" target="_blank" rel="noopener" aria-label={t(locale, "upload.open_link_aria")}>
+              <div class="copy-bar__text-wrapper">
+                <span class="copy-bar__url">{parsed.url}</span>
+              </div>
+            </a>
+            <form method="POST" action={`/file/${parsed.id}/delete`}>
+              <input type="hidden" name="token" value={parsed.delete_token} />
+              <button type="submit" class="delete-btn" aria-label={t(locale, "upload.delete_file_aria")}>
+                <span class="file-card-icon" set:html={iconSvgHtml("trash", 24)} />
+              </button>
+            </form>
+          </div>
+        </div>
+      </noscript>
+    )}
+    <div class="scroll-element sticky-shadow-bottom" aria-hidden="true"></div>
+    <div class="scroll-element scroll-cover-bottom" aria-hidden="true"></div>
+  </section>
+
+  <span id="actions-area" tabindex="-1" aria-hidden="true" style="position:absolute"></span>
+    <nav id="upload-card-actions" class="act" aria-label={t(locale, "actions.upload_actions")} data-act="">
+    <a class="action-btn" href={lp("/files")} aria-label={t(locale, "nav.files")} title={t(locale, "nav.files")} data-action-id="files">
+      <span class="action-btn__icon" set:html={iconSvgHtml("files", 24)} />
+      <span>{t(locale, "nav.files")}</span>
+    </a>
+    <a class="action-btn" href={lp("/report")} aria-label={t(locale, "nav.report")} title={t(locale, "nav.report")} data-action-id="report">
+      <span class="action-btn__icon" set:html={iconSvgHtml("report", 24)} />
+      <span>{t(locale, "nav.report")}</span>
+    </a>
+    <details class="select-details" data-select-details="">
+      <summary class="action-btn" aria-haspopup="menu" aria-label={t(locale, "nav.more")} aria-describedby="upload-card-more-desc" title={t(locale, "nav.more")}>
+        <span class="action-btn__icon" set:html={iconSvgHtml("more", 24)} />
+        <span>{t(locale, "nav.more")}</span>
+      </summary>
+      <span id="upload-card-more-desc" class="sr-only">{t(locale, "sr.more_menu_sr")}</span>
+      <summary class="select-backdrop" data-select-backdrop=""></summary>
+      <summary class="select-close-btn nojs-only">{t(locale, "sr.close_btn")}</summary>
+      <div class="select-menu select-menu--details" role="menu" aria-label={t(locale, "sr.more_options")} aria-describedby="upload-card-more-desc">
+        <div class="select-options-list">
+          {MORE_MENU_ITEMS.map((item) =>
+            item === null ? (
+              <div class="select-option--divider" />
+            ) : (
+              <a class={item.jsOnly ? "select-option js-only" : "select-option"} role="menuitem" href={item.href}>
+                <span class="select-option__icon" set:html={iconSvgHtml(item.icon, 24)} />
+                <span class="select-option__label">{item.label}</span>
+              </a>
+            ),
+          )}
+        </div>
+      </div>
+    </details>
+  </nav>
+
+  <footer class="footr footr--divd" data-footr="">
+    <div class="footr__primary">
+      <p class="footr__message"></p>
+      <a class="footr__commit footr__link" href="https://github.com/create-juicey-app/juicebox2" target="_blank" rel="noopener noreferrer">main</a>
+    </div>
+  </footer>
+</div>

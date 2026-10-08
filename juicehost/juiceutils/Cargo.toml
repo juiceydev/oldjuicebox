@@ -1,0 +1,49 @@
+[package]
+name = "juicehost-juiceutils"
+version = "1.0.0"
+edition = "2021"
+authors = ["juiceydev"]
+description = "Shared security, validation, proxy, and HTTP/3 utilities for juicehost"
+license = "LGPL-3.0-or-later"
+repository = "https://github.com/juiceboxdev/juiceutils"
+readme = "README.md"
+publish = false
+
+[lib]
+name = "juiceutils"
+
+[features]
+default = ["quic"]
+quic = [
+    "quinn",
+    "quinn-proto",
+    "h3",
+    "h3-quinn",
+    "rustls",
+    "rustls-pki-types",
+    "rcgen",
+    "http-body-util",
+]
+
+[dependencies]
+axum = { version = "0.7", features = ["multipart", "ws"] }
+tokio = { version = "1", features = ["full"] }
+tower = { version = "0.4", features = ["util"] }
+tracing = "0.1"
+bytes = "1"
+serde_json = "1"
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+subtle = "2"
+quinn = { version = "0.11", features = ["runtime-tokio"], optional = true }
+quinn-proto = { version = "0.11", optional = true }
+h3 = { version = ">=0.0.7", optional = true }
+h3-quinn = { version = ">=0.0.8", optional = true }
+rustls = { version = "0.23", optional = true }
+rustls-pki-types = { version = "1", optional = true }
+rcgen = { version = "0.13", optional = true }
+http-body-util = { version = "0.1", features = ["channel"], optional = true }
+
+[dev-dependencies]
+tempfile = "3"

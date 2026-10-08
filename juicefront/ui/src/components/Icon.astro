@@ -1,0 +1,19 @@
+---
+import { iconSvgHtml } from "../lib/icons";
+
+interface Props {
+    name: string;
+    size?: number;
+    class?: string;
+    shapeRendering?: string;
+}
+
+const { name, size = 24, class: cls, shapeRendering } = Astro.props as Props;
+---
+
+<span
+    style={`width:${size}px;height:${size}px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0`}
+    class={cls}
+    aria-hidden="true"
+    set:html={iconSvgHtml(name, size, "", shapeRendering)}
+/>

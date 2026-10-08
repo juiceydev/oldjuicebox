@@ -1,0 +1,250 @@
+---
+import {
+  getFormattedCommitLabel,
+  getProjectStructuredData,
+  getRepoUrl,
+} from "../lib/metadata";
+import { ClientRouter } from "astro:transitions";
+import Modals from "../components/Modals.astro";
+import UploadTray from "../components/UploadTray.astro";
+import AdSlots from "../components/AdSlots.astro";
+import NetDebug from "../components/NetDebug.astro";
+import { LOCALES, LOCALE_PREFIX_RE, resolveLocale, t } from "../i18n";
+import "../styles/upload.css";
+import "../styles/components/RetentionToolbar.css";
+import "../styles/components/Page.css";
+import "../styles/components/UploadHeader.css";
+import "../styles/components/UploadFooter.css";
+import "../styles/components/Select.css";
+import "../styles/components/UploadedFilesList.css";
+import "../styles/components/EditFileModal.css";
+import "../styles/components/FilesCard.css";
+import "../styles/components/ContentCard.css";
+import "../styles/components/LanguageModal.css";
+import "../styles/components/CopyBar.css";
+import "../styles/components/QrModal.css";
+import "../styles/components/NoJs.css";
+import "../styles/components/AnnouncementBanner.css";
+import "../styles/components/UploadTray.css";
+
+type AttributeValue = string | number | boolean;
+
+interface AdditionalMeta {
+  name?: string;
+  property?: string;
+  content: string;
+}
+
+interface LayoutProps {
+    title?: string;
+    description?: string;
+    canonical?: string;
+    ogImage?: string;
+    lang?: string;
+    viewport?: string;
+    structuredData?: Record<string, unknown>;
+    bodyClass?: string | Array<string | false | null | undefined>;
+    bodyAttributes?: Record<string, AttributeValue>;
+    htmlAttributes?: Record<string, AttributeValue>;
+    meta?: AdditionalMeta[];
+    backendOffline?: boolean;
+    isBanned?: boolean;
+}
+
+const {
+    title,
+    description,
+    canonical,
+    ogImage,
+    lang,
+    viewport = "width=device-width, initial-scale=1",
+    structuredData,
+    bodyClass,
+    bodyAttributes,
+    htmlAttributes,
+    meta,
+    backendOffline = false,
+    isBanned = false,
+} = Astro.props as LayoutProps;
+
+const currentLocale = resolveLocale(lang || Astro.currentLocale);
+const defaultTitle = "Juicebox - Temporary File Uploads";
+const defaultDescription =
+  "Juicebox is a temporary file upload experience with rich feedback, retention controls, and delightful visuals.";
+const defaultOgImage = "/og-image.png";
+
+const resolvedTitle = title?.trim() || defaultTitle;
+const resolvedDescription = description?.trim() || defaultDescription;
+const resolvedCanonical = canonical?.trim() || getRepoUrl();
+const resolvedOgImage = ogImage?.trim() || defaultOgImage;
+const resolvedStructuredData =
+  structuredData && Object.keys(structuredData).length > 0
+    ? structuredData
+    : getProjectStructuredData();
+const resolvedCommitLabel = getFormattedCommitLabel();
+
+const htmlAttributesMerged: Record<string, AttributeValue> = {
+    lang: currentLocale,
+    ...(backendOffline ? { "data-backend-offline": "" } : {}),
+    ...(isBanned ? { "data-banned": "" } : {}),
+    ...(htmlAttributes ?? {}),
+};
+
+const resolvedBodyClass = Array.isArray(bodyClass)
+  ? bodyClass.filter(Boolean).join(" ")
+  : bodyClass?.toString().trim();
+
+const resolvedBodyAttributes = { ...(bodyAttributes ?? {}) };
+
+const additionalMeta = Array.isArray(meta)
+  ? meta.filter(
+      (entry): entry is AdditionalMeta =>
+        Boolean(entry?.content) && Boolean(entry?.name || entry?.property),
+    )
+  : [];
+
+const pathname = Astro.url.pathname;
+const currentPath = pathname.replace(LOCALE_PREFIX_RE, "/") || "/";
+---
+
+<html {...htmlAttributesMerged} class="no-js">
+  <head>
+    <script is:inline>
+      document.documentElement.classList.remove("no-js");
+      document.documentElement.classList.add("js");
+    </script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content={viewport} />
+    <meta name="theme-color" content="#1a1613" />
+    <meta name="color-scheme" content="light" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' http: https:; style-src 'self' 'unsafe-inline'; img-src 'self' data: http: https:; font-src 'self'; connect-src 'self' http: https: ws: wss:; frame-src http: https:" />
+    {backendOffline && <meta http-equiv="refresh" content="15" />}
+    <title>{resolvedTitle}</title>
+    <meta name="description" content={resolvedDescription} />
+    <meta name="x-commit-ref" content={resolvedCommitLabel} />
+    <link rel="preconnect" href="/" crossorigin />
+    <link rel="dns-prefetch" href="/" />
+    <link rel="icon" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="preload" as="font" href="/general-latin.woff2" type="font/woff2" crossorigin />
+
+    {LOCALES.map((l) => {
+      const href = l.code === "en" ? currentPath : `/${l.code}${currentPath === "/" ? "" : currentPath}`;
+      return <link rel="alternate" hreflang={l.code} href={href} />;
+    })}
+    <link rel="alternate" hreflang="x-default" href={currentPath} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={resolvedTitle} />
+    <meta property="og:description" content={resolvedDescription} />
+    <meta property="og:url" content={resolvedCanonical} />
+    <meta property="og:site_name" content="Juicebox" />
+    <meta property="og:image" content={resolvedOgImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={resolvedTitle} />
+    <meta name="twitter:description" content={resolvedDescription} />
+    <meta name="twitter:image" content={resolvedOgImage} />
+
+    {additionalMeta.map((entry) => (
+      <meta
+        name={entry.name}
+        property={entry.property}
+        content={entry.content}
+      />
+    ))}
+
+    <script type="application/ld+json" set:html={JSON.stringify(resolvedStructuredData)} />
+
+    <script is:inline>
+      function enableJs() {
+        document.documentElement.classList.replace("no-js", "js");
+      }
+      enableJs();
+
+      function injectUploadBtnStyle() {
+        if (document.getElementById("js-upload-btn-style")) return;
+        var s = document.createElement("style");
+        s.id = "js-upload-btn-style";
+        s.textContent = "html.js .upload-submit{display:none!important}";
+        document.head.appendChild(s);
+      }
+      injectUploadBtnStyle();
+      document.addEventListener("astro:page-load", injectUploadBtnStyle);
+      document.addEventListener("astro:page-load", enableJs);
+
+    </script>
+
+    <script>
+      import { initRipple } from "../lib/ripple";
+
+      const API_URL = import.meta.env.PUBLIC_API_URL || "";
+      async function checkHealth() {
+        try {
+          const res = await fetch(`${API_URL}/api/health`);
+          if (!res.ok) throw new Error("not ok");
+          const data = await res.json();
+          if (data.status === "ok") {
+            document.documentElement.removeAttribute("data-backend-offline");
+          } else {
+            document.documentElement.setAttribute("data-backend-offline", "");
+          }
+        } catch {
+          document.documentElement.setAttribute("data-backend-offline", "");
+        }
+      }
+      checkHealth();
+      setInterval(checkHealth, 300000);
+      document.addEventListener("astro:page-load", () => {
+        checkHealth();
+      });
+
+      try {
+        const { initHaptics } = await import("../lib/haptics");
+        initHaptics();
+      } catch (e) {
+        console.warn("haptics init failed", e);
+      }
+      try {
+        initRipple();
+      } catch {}
+    </script>
+
+    <ClientRouter />
+    <slot name="head" />
+  </head>
+
+  <body class={resolvedBodyClass || undefined} {...resolvedBodyAttributes} transition:animate="none">
+    <a href="#main-content" class="skip-link">{t(currentLocale, "accessibility.skip_main")}</a>
+    <a href="#actions-area" class="skip-link skip-link--actions">{t(currentLocale, "accessibility.skip_actions")}</a>
+    <div class="content" transition:animate="none">
+        <slot name="body-start" />
+
+        <slot />
+
+        <AdSlots locale={currentLocale} />
+
+        <slot name="body-end" />
+    </div>
+    <Modals />
+    <UploadTray locale={currentLocale} />
+    <NetDebug />
+
+    <script is:inline>
+      // Automation courtesy notice. navigator.webdriver is set by default
+      // under Puppeteer/Playwright/Selenium - real users never trip it, and
+      // server-side crawler filtering stays Cloudflare's job.
+      try {
+        if (navigator.webdriver === true && window.top === window) {
+          document.documentElement.innerHTML =
+            '<head><title>418</title></head><body>'
+            + 'Why are you trying to automate our service while we have an OpenAPI documentation available at '
+            + '<a href="https://box.juicey.dev/api/openapi.json">https://box.juicey.dev/api/openapi.json</a>'
+            + ' use it instead of brute-forcing your way in! - JuiceyDev XOXO';
+        }
+      } catch {}
+    </script>
+  </body>
+</html>

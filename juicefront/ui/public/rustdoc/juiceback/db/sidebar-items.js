@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["delete_admin","delete_file","delete_files_by_ids","get_admin_by_username","get_file","get_files_by_ids","init_db","insert_admin","insert_file","list_active","list_admins","list_all_files","list_all_storage_paths","list_expired","renew_file_id"],"struct":["AdminUser","FileRecord"]};

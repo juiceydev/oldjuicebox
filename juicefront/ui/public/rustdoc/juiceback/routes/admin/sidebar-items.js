@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["admin_panel_handler","admin_routes","check_handler","delete_file_handler","extract_jwt","files_handler","login_handler","logout_handler"],"struct":["AdminFileEntry","CheckResponse","LoginForm","LoginResponse"]};

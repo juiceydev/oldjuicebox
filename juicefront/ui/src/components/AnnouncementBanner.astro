@@ -1,0 +1,51 @@
+---
+import { checkUserBan } from "../lib/ban";
+import { t, resolveLocale } from "../i18n";
+import WarningIcon from "../icons/warning.svg";
+
+const locale = resolveLocale(Astro.currentLocale);
+
+const BACKEND_URL =
+  process.env.JUICEBACK_URL || "";
+
+let announcement: { message: string; link_url: string; mode: string } | null = null;
+
+try {
+  const res = await fetch(`${BACKEND_URL}/api/announcement`);
+  if (res.ok) {
+    const data = await res.json();
+    if (data && data.message) {
+      announcement = data;
+    }
+  }
+} catch {}
+
+const banStatus = await checkUserBan(Astro.request);
+const isBanned = banStatus.banned;
+const mode = isBanned ? "danger" : (announcement?.mode ?? "warning");
+const message = isBanned
+  ? t(locale, "banner.banned_notice")
+  : announcement?.message;
+const linkUrl = isBanned
+  ? `/banned`
+  : announcement?.link_url;
+const showBanner = isBanned || (announcement?.message);
+---
+
+{showBanner && (
+  <div class={`announcement-banner announcement-banner--${mode}`} role="status" data-announcement-mode={mode}>
+    {mode !== "status" && <div class="announcement-banner__stripes" aria-hidden="true"></div>}
+    <div class="announcement-banner__body">
+      <WarningIcon class="announcement-banner__icon" width="20" height="20" aria-hidden="true" />
+      <p class="announcement-banner__message">{message}</p>
+      {linkUrl && (
+        <a class="announcement-banner__link" href={linkUrl} target={isBanned ? "" : "_blank"} rel={isBanned ? "" : "noopener noreferrer"}>
+          {t(locale, "banner.learn_more")}
+        </a>
+      )}
+    </div>
+  </div>
+)}
+
+
+

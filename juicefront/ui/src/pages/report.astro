@@ -1,0 +1,42 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/components/ReportForm.css";
+import "../styles/components/ReportCard.css";
+import ReportCard from "../components/ReportCard.astro";
+import { getFormattedCommitLabel, getRepoUrl } from "../lib/metadata";
+import { t, resolveLocale } from "../i18n";
+
+const locale = resolveLocale(Astro.currentLocale);
+const footerCommit = getFormattedCommitLabel();
+const canonicalUrl = getRepoUrl();
+
+const url = new URL(Astro.request.url);
+const submitted = url.searchParams.get("submitted") === "1";
+
+const customActions = [
+    {
+        id: "back",
+        label: t(locale, "nav.back"),
+        icon: "back",
+        ariaLabel: t(locale, "nav.back_aria"),
+    },
+    { id: "files", label: t(locale, "nav.files"), icon: "files" },
+    { id: "more", label: t(locale, "nav.more"), icon: "more" },
+];
+---
+
+<BaseLayout
+    title={`${t(locale, "report.title")} - Juicebox`}
+    description={t(locale, "report.subtitle")}
+    canonical={canonicalUrl}
+    bodyClass="report-page"
+>
+    <main id="main-content" transition:animate="none">
+        <ReportCard
+            footerCommit={footerCommit}
+            footerRepoUrl={canonicalUrl}
+            actions={customActions}
+            submitted={submitted}
+        />
+    </main>
+</BaseLayout>

@@ -1,0 +1,87 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout title="Announcement - Admin - Juicebox">
+    <h1>Site Announcement</h1>
+    <p>This message appears on the upload page for all visitors.</p>
+    <br />
+    <p><a href="/admin">Back to Admin Panel</a></p>
+    <br />
+    <form id="announcement-form">
+        <label>
+            Message
+            <input type="text" id="ann-message" name="message" required placeholder="e.g. Scheduled maintenance tonight" maxlength="280" />
+        </label>
+        <br /><br />
+        <label>
+            Link URL (optional)
+            <input type="url" id="ann-link" name="link_url" placeholder="https://status.example.com" />
+        </label>
+        <br /><br />
+        <label>
+            Mode
+            <select id="ann-mode" name="mode">
+                <option value="status">Status (no stripes)</option>
+                <option value="info">Info (gray stripes)</option>
+                <option value="warning" selected>Warning (orange stripes)</option>
+                <option value="danger">Danger (red stripes)</option>
+            </select>
+        </label>
+        <br /><br />
+        <label>
+            <input type="checkbox" id="ann-active" name="is_active" checked />
+            Active (visible to users)
+        </label>
+        <br /><br />
+        <button type="submit">Save Announcement</button>
+    </form>
+    <p id="ann-status" aria-live="polite"></p>
+</AdminLayout>
+
+<script>
+    async function loadAnnouncement() {
+        try {
+            var res = await fetch("/api/admin/announcement");
+            if (!res.ok) return;
+            var data = await res.json();
+            if (data && data.message !== undefined) {
+                document.getElementById("ann-message").value = data.message;
+                document.getElementById("ann-link").value = data.link_url || "";
+                document.getElementById("ann-mode").value = data.mode || "warning";
+                document.getElementById("ann-active").checked = data.is_active;
+            }
+        } catch {}
+    }
+
+    var form = document.getElementById("announcement-form");
+    if (form) {
+        form.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            var statusEl = document.getElementById("ann-status");
+            statusEl.textContent = "Saving...";
+            try {
+                var res = await fetch("/api/admin/announcement", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        message: document.getElementById("ann-message").value,
+                        link_url: document.getElementById("ann-link").value,
+                        mode: document.getElementById("ann-mode").value,
+                        is_active: document.getElementById("ann-active").checked,
+                    }),
+                });
+                if (res.ok) {
+                    statusEl.textContent = "Saved!";
+                    loadAnnouncement();
+                } else {
+                    statusEl.textContent = "Failed: " + res.status;
+                }
+            } catch (err) {
+                statusEl.textContent = "Error: " + err.message;
+            }
+        });
+    }
+
+    loadAnnouncement();
+</script>

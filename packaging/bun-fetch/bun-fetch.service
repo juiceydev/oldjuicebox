@@ -1,0 +1,18 @@
+[Unit]
+Description=JuiceBox Bun SABR-fetch sidecar (primary, egress via secondary proxy)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=juicebox
+Group=juicebox
+WorkingDirectory=/var/lib/juicebox/bun-fetch
+EnvironmentFile=/var/lib/juicebox/bun-fetch.env
+ExecStart=/usr/local/bin/bun server.ts
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+{
+  "name": "juicebox-bun-fetch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bun SABR-proof YouTube fetch sidecar for JuiceBox: runs yt-dlp with Bun-powered JS challenges + per-video PO tokens, streams the file back over authenticated HTTP.",
+  "type": "module",
+  "scripts": {
+    "start": "bun server.ts"
+  }
+}

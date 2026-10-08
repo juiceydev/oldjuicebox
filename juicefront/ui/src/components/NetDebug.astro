@@ -1,0 +1,682 @@
+---
+// Network/device debug visualizer. Hidden by default; toggle by shaking the
+// device (mobile) or Ctrl+Shift+D (desktop). Semi-transparent black panel,
+// top-left, pointer-events:none so it never intercepts input.
+---
+
+<div id="jb-net-debug" hidden aria-hidden="true">
+  <canvas id="jb-net-canvas" width="440" height="88"></canvas>
+  <div id="jb-net-text"></div>
+  <div id="jb-net-actions">
+    <button id="jb-net-export-json" type="button">export json</button>
+    <button id="jb-net-export-csv" type="button">export csv</button>
+  </div>
+</div>
+
+<style>
+  #jb-net-debug {
+    position: fixed;
+    top: 8px;
+    left: 10px;
+    z-index: 99999;
+    background: rgba(0, 0, 0, 0.62);
+    color: #fff;
+    font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    padding: 8px 11px;
+    border-radius: 10px;
+    pointer-events: none;
+    max-width: min(74vw, 462px);
+  }
+  #jb-net-text {
+    white-space: pre-wrap;
+  }
+  #jb-net-canvas {
+    display: block;
+    width: 100%;
+    height: 88px;
+    margin-bottom: 4px;
+  }
+  #jb-net-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 7px;
+    pointer-events: auto;
+  }
+  #jb-net-actions button {
+    flex: 1;
+    font: 10px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    padding: 5px 8px;
+    cursor: pointer;
+  }
+  #jb-net-actions button:active {
+    background: rgba(255, 255, 255, 0.22);
+  }
+</style>
+
+<script>
+  import {
+    detectNetTier,
+    streamsForRate,
+    TIER_DEFAULT_BPS,
+    TIER_CHUNK,
+    PARALLEL_STREAMS,
+    TUS_MIN_PART,
+    TUS_MAX_PARTS,
+    TUNER_INTERVAL_MS,
+    TUS_THRESHOLD,
+    TUS_TARGET_CHUNK_SECS,
+    LAST_SPEED_KEY,
+    UPLOAD_ENGINE_BUILD,
+  } from "../lib/upload-config";
+
+  const MB = 1024 * 1024;
+  const fmtRate = (bps: number) =>
+    bps >= MB ? `${(bps / MB).toFixed(2)} MB/s` : `${(bps / 1024).toFixed(0)} KB/s`;
+  const trunc = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "..." : s);
+
+  interface TunerDbg {
+    w: number;
+    t: number;
+    sat: boolean;
+    r: number;
+    c: number;
+    n: number;
+    k: number;
+    g?: boolean | null;
+  }
+  interface LiveItem {
+    id?: string;
+    n: string;
+    s: string;
+    p: number;
+    m: string;
+    z: number;
+    d?: TunerDbg;
+    o?: { mode: string; quick: boolean; ttl: number; host: string };
+  }
+
+  let open = false;
+  let rateEma = 0;
+  let peakRate = 0;
+  let lastSample = { t: 0, done: 0 };
+  let activeCount = 0;
+  let prevDone = 0;
+  let prevTime = 0;
+  let probeRtt: number | null = null;
+  let startedAt = 0;
+  let batteryTxt = "";
+  let liveItems: LiveItem[] = [];
+  let lastTuner: TunerDbg | null = null;
+
+  // Speed history for the graph. Sampled on a FIXED cadence by its own
+  // interval - never per network message, so the graph never accelerates.
+  const SAMPLE_MS = 500;
+  const HIST = 110; // ~55s window
+  const hist: number[] = [];
+
+  const elText = () => document.getElementById("jb-net-text");
+  const elCanvas = () => document.getElementById("jb-net-canvas") as HTMLCanvasElement | null;
+
+  async function probe(): Promise<void> {
+    const t0 = performance.now();
+    try {
+      const r = await fetch("/api/health", { cache: "no-store" });
+      if (r.ok) probeRtt = Math.round(performance.now() - t0);
+    } catch {}
+  }
+
+  async function readBattery(): Promise<void> {
+    try {
+      const nav = navigator as Navigator & {
+        getBattery?: () => Promise<{ level: number; charging: boolean }>;
+      };
+      if (!nav.getBattery) return;
+      const b = await nav.getBattery();
+      batteryTxt = `${Math.round(b.level * 100)}%${b.charging ? " charging" : ""}`;
+    } catch {}
+  }
+
+  function sec(label: string, lines: string[]): string {
+    return [label, ...lines.map((l) => "  " + l)].join("\n");
+  }
+
+  // ---- datapoint recorder ------------------------------------------------
+  // Fixed 1s cadence, independent of panel visibility, so cold-start bursts
+  // are captured even when the overlay is closed. Ring buffer ~2h.
+  interface RecFile {
+    n: string;
+    s: string;
+    p: number;
+    m: string;
+    z: number;
+  }
+  interface Sample {
+    t: number; // wall clock, unix seconds
+    up_s: number | null; // seconds since first active upload
+    now_bps: number;
+    peak_bps: number;
+    done_mb: number;
+    active: number;
+    api_rtt_ms: number | null;
+    workers: number | null;
+    target_workers: number | null;
+    saturated: boolean | null;
+    tuner_bps: number | null;
+    parts_done: number | null;
+    parts_total: number | null;
+    chunk_mb: number | null;
+    gzip: boolean | null;
+    files: RecFile[];
+  }
+  const RECORD_MS = 1000;
+  const MAX_SAMPLES = 7200;
+  const recorded: Sample[] = [];
+  setInterval(() => {
+    const t = lastTuner;
+    recorded.push({
+      t: Math.floor(Date.now() / 1000),
+      up_s: startedAt ? Math.round((performance.now() - startedAt) / 1000) : null,
+      now_bps: Math.round(rateEma),
+      peak_bps: Math.round(peakRate),
+      done_mb: +(lastSample.done / MB).toFixed(2),
+      active: activeCount,
+      api_rtt_ms: probeRtt,
+      workers: t ? t.w : null,
+      target_workers: t ? t.t : null,
+      saturated: t ? t.sat : null,
+      tuner_bps: t ? Math.round(t.r) : null,
+      parts_done: t ? t.c : null,
+      parts_total: t ? t.n : null,
+      chunk_mb: t && t.k ? +(t.k / MB).toFixed(2) : null,
+      gzip: t?.g == null ? null : !!t.g,
+      files: liveItems.map((i) => ({
+        n: trunc(i.n, 32),
+        s: i.s,
+        p: Math.round(i.p * 10) / 10,
+        m: i.m,
+        z: i.z,
+      })),
+    });
+    if (recorded.length > MAX_SAMPLES) recorded.shift();
+  }, RECORD_MS);
+
+  function exportStamp(): string {
+    const d = new Date();
+    const p = (x: number) => String(x).padStart(2, "0");
+    return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  }
+
+  function downloadText(name: string, mime: string, text: string): void {
+    const url = URL.createObjectURL(new Blob([text], { type: mime }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  function metaBlock(): object {
+    return {
+      exported_at: new Date().toISOString(),
+      ua: navigator.userAgent,
+      battery: batteryTxt || null,
+      network: netLines(),
+      device: deviceLines(),
+      settings: settingLines(),
+      sample_interval_s: RECORD_MS / 1000,
+      max_samples: MAX_SAMPLES,
+      sample_count: recorded.length,
+    };
+  }
+
+  function exportJson(): void {
+    downloadText(
+      `juicebox-netdebug-${exportStamp()}.json`,
+      "application/json",
+      JSON.stringify({ meta: metaBlock(), samples: recorded.slice() }, null, 1),
+    );
+  }
+
+  function exportCsv(): void {
+    const esc = (v: unknown): string => {
+      const s = v == null ? "" : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = [
+      "t_iso", "up_s", "now_bps", "peak_bps", "done_mb", "active",
+      "api_rtt_ms", "workers", "target_workers", "saturated",
+      "tuner_bps", "parts_done", "parts_total", "chunk_mb", "gzip", "files",
+    ];
+    const rows = recorded.map((r) => [
+      new Date(r.t * 1000).toISOString(),
+      r.up_s, r.now_bps, r.peak_bps, r.done_mb, r.active, r.api_rtt_ms,
+      r.workers, r.target_workers, r.saturated, r.tuner_bps,
+      r.parts_done, r.parts_total, r.chunk_mb, r.gzip,
+      r.files.map((f) => `${f.n}:${f.s}:${f.p}%:${f.m}:${f.z}`).join(" | "),
+    ]);
+    const csv = [header, ...rows].map((row) => row.map(esc).join(",")).join("\n");
+    downloadText(`juicebox-netdebug-${exportStamp()}.csv`, "text/csv", csv);
+  }
+
+  document.getElementById("jb-net-export-json")?.addEventListener("click", exportJson);
+  document.getElementById("jb-net-export-csv")?.addEventListener("click", exportCsv);
+
+  function netLines(): string[] {
+    const c = (
+      navigator as unknown as {
+        connection?: {
+          type?: string;
+          effectiveType?: string;
+          downlink?: number;
+          rtt?: number;
+          saveData?: boolean;
+        };
+      }
+    ).connection;
+    if (!c) return [`api: none | health probe rtt=${probeRtt ?? "?"}ms`];
+    return [
+      `type=${c.type ?? "?"} eff=${c.effectiveType ?? "?"} down=${c.downlink ?? "?"}Mb api_rtt=${c.rtt ?? "?"}ms`,
+      `saveData=${!!c.saveData} probe_rtt=${probeRtt ?? "?"}ms`,
+    ];
+  }
+
+  function deviceLines(): string[] {
+    const nav = navigator as Navigator & {
+      deviceMemory?: number;
+      userAgentData?: { platform?: string };
+      maxTouchPoints?: number;
+    };
+    const perf = performance as Performance & {
+      memory?: { jsHeapSizeLimit: number };
+    };
+    const plat =
+      nav.userAgentData?.platform ||
+      (/Android/i.test(navigator.userAgent)
+        ? "Android"
+        : /iPhone|iPad/i.test(navigator.userAgent)
+          ? "iOS"
+          : /Mac/i.test(navigator.platform || "")
+            ? "macOS"
+            : /Win/i.test(navigator.platform || "")
+              ? "Windows"
+              : "?");
+    let ram = "n/a";
+    if (nav.deviceMemory) ram = `${nav.deviceMemory}GB`;
+    else if (perf.memory?.jsHeapSizeLimit)
+      ram = `~${(perf.memory.jsHeapSizeLimit / 1024 ** 3).toFixed(1)}GB heap`;
+    const motion = (
+      window as unknown as {
+        __jbMotion?: { evs: number; lastMag: unknown; src: string };
+      }
+    ).__jbMotion;
+    const motionTxt = motion
+      ? ` motion=${motion.evs}ev src=${motion.src} mag=${motion.lastMag ?? "-"}`
+      : "";
+    return [
+      `${plat}, ${nav.hardwareConcurrency ?? "?"} cores, ram=${ram}`,
+      `touch=${nav.maxTouchPoints ?? 0} online=${navigator.onLine}${batteryTxt ? ` battery=${batteryTxt}` : ""}`,
+      `ua=${trunc(navigator.userAgent, 42)}${motionTxt}`,
+    ];
+  }
+
+  function settingLines(): string[] {
+    const tier = detectNetTier();
+    const stored = Number(localStorage.getItem(LAST_SPEED_KEY));
+    const hint = Number.isFinite(stored) && stored > 0 ? stored : 0;
+    const est = hint || TIER_DEFAULT_BPS[tier];
+    return [
+      `engine=${UPLOAD_ENGINE_BUILD}`,
+      `tier=${tier}${hint ? " (learned)" : ""} est=${fmtRate(est)}`,
+      `streams: start ${streamsForRate(est)}, cap ${PARALLEL_STREAMS}, parts >=${TUS_MIN_PART / MB}MB up to ${TUS_MAX_PARTS}`,
+      `chunk: start ${TIER_CHUNK[tier].start / MB}MB max ${TIER_CHUNK[tier].max / MB}MB target ${TUS_TARGET_CHUNK_SECS}s`,
+      `mode: tus> ${TUS_THRESHOLD / MB}MB | gzip: text-like ext/mime | tuner every ${TUNER_INTERVAL_MS / 1000}s`,
+    ];
+  }
+
+  function tunerLines(): string[] {
+    if (!lastTuner)
+      return [`no tus session yet (direct < ${TUS_THRESHOLD / MB}MB skips tuning)`];
+    const t = lastTuner;
+    const chunk = t.k ? (t.k >= MB ? `${(t.k / MB).toFixed(1)}MB` : `${Math.round(t.k / 1024)}KB`) : "-";
+    return [
+      `chose ${t.w} streams (target ${t.t}, cap ${PARALLEL_STREAMS})`,
+      `parts ${t.c}/${t.n} | chunk ${chunk} | gzip=${t.g == null ? "probe" : t.g ? "on" : "off"}`,
+      `state: ${activeCount > 0 ? (t.sat ? "SATURATED" : "growing") : "idle"} | window rate ${fmtRate(t.r)}`,
+    ];
+  }
+
+  function uploadLines(): string[] {
+    const it = liveItems.find((i) => i.o || i.m === "tus");
+    if (!it) return ["no active upload"];
+    const o = it.o;
+    return [
+      `method=${it.m}${o ? ` mode=${o.mode} quick=${o.quick} ttl=${o.ttl}h` : ""}`,
+      o ? `host=${o.host || "(default)"}` : "",
+    ].filter(Boolean);
+  }
+
+  function speedLines(): string[] {
+    const remaining = liveItems.reduce(
+      (a, i) => a + Math.max(0, (i.z * (100 - i.p)) / 100),
+      0,
+    );
+    const eta =
+      rateEma > 1 && remaining > 0
+        ? `${String(Math.floor(remaining / rateEma / 60)).padStart(2, "0")}:${String(Math.floor((remaining / rateEma) % 60)).padStart(2, "0")}`
+        : "--:--";
+    return [
+      `now ${fmtRate(rateEma)} peak ${fmtRate(peakRate)} | sent ${(lastSample.done / MB).toFixed(1)}MB`,
+      `eta ${eta} | elapsed ${startedAt ? ((performance.now() - startedAt) / 1000).toFixed(0) : "0"}s | active ${activeCount}`,
+    ];
+  }
+
+  // Smooth graph: DPR-aware canvas, stroked line with area fill. Canvas
+  // anti-aliasing keeps the line clean at any scale.
+  function drawGraph(): void {
+    const cv = elCanvas();
+    if (!cv) return;
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth || 440;
+    const h = cv.clientHeight || 88;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+      cv.width = Math.round(w * dpr);
+      cv.height = Math.round(h * dpr);
+    }
+    const ctx = cv.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    const pad = 2;
+    const max = Math.max(...hist, 512 * 1024);
+
+    // quarter gridlines + y labels
+    ctx.font = "9px ui-monospace, monospace";
+    ctx.fillStyle = "rgba(255,255,255,.55)";
+    ctx.strokeStyle = "rgba(255,255,255,.14)";
+    ctx.lineWidth = 1;
+    for (let q = 0; q <= 4; q++) {
+      const y = pad + ((h - pad * 2) * q) / 4;
+      ctx.beginPath();
+      ctx.moveTo(pad, Math.round(y) + 0.5);
+      ctx.lineTo(w - pad, Math.round(y) + 0.5);
+      ctx.stroke();
+      const val = (max * (4 - q)) / 4;
+      ctx.fillText(
+        val >= MB ? `${(val / MB).toFixed(0)}M` : `${Math.round(val / 1024)}K`,
+        w - 24,
+        y + 8 >= h ? h - 2 : y + 8,
+      );
+    }
+
+    if (hist.length < 2) {
+      ctx.fillStyle = "rgba(255,255,255,.6)";
+      ctx.fillText("waiting for samples", pad + 2, h - 6);
+      return;
+    }
+
+    const stepX = (w - pad * 2 - 26) / (HIST - 1);
+    const x0 = pad;
+    const yOf = (v: number) => pad + (h - pad * 2) * (1 - v / max);
+
+    // area fill
+    ctx.beginPath();
+    ctx.moveTo(x0, h - pad);
+    hist.forEach((v, i) => ctx.lineTo(x0 + i * stepX, yOf(v)));
+    ctx.lineTo(x0 + (hist.length - 1) * stepX, h - pad);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(255,255,255,.09)";
+    ctx.fill();
+
+    // line
+    ctx.beginPath();
+    hist.forEach((v, i) => {
+      const x = x0 + i * stepX;
+      const y = yOf(v);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    // head dot
+    const hx = x0 + (hist.length - 1) * stepX;
+    const hy = yOf(hist[hist.length - 1]);
+    ctx.beginPath();
+    ctx.arc(hx, hy, 2.4, 0, Math.PI * 2);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+  }
+
+  function render(): void {
+    const txt = elText();
+    if (!txt || !open) return;
+    const now = performance.now();
+    if (activeCount > 0 && prevTime > 0) {
+      const rate =
+        (Math.max(0, lastSample.done - prevDone) / Math.max(1, now - prevTime)) * 1000;
+      rateEma = rateEma ? rateEma * 0.6 + rate * 0.4 : rate;
+      peakRate = Math.max(peakRate, rateEma);
+    }
+    prevDone = lastSample.done;
+    prevTime = now;
+
+    // Prefer telemetry from an ACTIVE tus item; ignore stale dbg shapes from
+    // persisted tray items (older deploys lacked k/g fields).
+    const fresh =
+      liveItems.find(
+        (i) =>
+          i.d &&
+          typeof i.d.g !== "undefined" &&
+          (i.s === "uploading" || i.s === "finalizing"),
+      )?.d ?? liveItems.find((i) => i.d && typeof i.d.g !== "undefined")?.d;
+    if (fresh) lastTuner = fresh;
+
+    txt.textContent = [
+      "-- NET DEBUG --",
+      sec("[NETWORK]", netLines()),
+      sec("[DEVICE]", deviceLines()),
+      sec("[SETTINGS]", settingLines()),
+      sec("[UPLOAD]", uploadLines()),
+      sec("[TUNER]", tunerLines()),
+      sec("[SPEED]", speedLines()),
+      liveItems.length
+        ? sec(
+            "[FILES]",
+            liveItems.map(
+              (i) =>
+                `${trunc(i.n, 18)} ${i.s}:${i.m} ${Math.round(i.p)}% (${((i.z * i.p) / 100 / MB).toFixed(1)}MB)`,
+            ),
+          )
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    drawGraph();
+  }
+
+  // Fixed-cadence sampler: one histogram point every SAMPLE_MS no matter how
+  // chatty the network gets.
+  setInterval(() => {
+    hist.push(activeCount > 0 ? rateEma : 0);
+    if (hist.length > HIST) hist.shift();
+  }, SAMPLE_MS);
+
+  window.addEventListener("jb-net-sample", (ev) => {
+    const d = (ev as CustomEvent).detail as {
+      done: number;
+      active: number;
+      items: LiveItem[];
+    };
+    if (d.active > 0 && !startedAt) startedAt = performance.now();
+    if (d.active === 0) startedAt = 0;
+    lastSample = { t: performance.now(), done: d.done };
+    activeCount = d.active;
+    liveItems = d.items ?? [];
+    if (open) render();
+  });
+
+  function toggle(): void {
+    open = !open;
+    const node = document.getElementById("jb-net-debug");
+    if (!node) return;
+    node.hidden = !open;
+    if (open) {
+      render();
+      probe();
+      readBattery();
+    }
+    try {
+      navigator.vibrate?.(12);
+    } catch {}
+  }
+
+  // Shake to toggle: three acceleration spikes within ~900ms.
+  //
+  // Engine reality check: Chrome samples at ~60 Hz with batched/bursty
+  // delivery and sensor-fused data, Firefox at ~10-20 Hz unbatched, and the
+  // axis frames differ between them. An absolute-magnitude gate alone
+  // misfires across engines, so detection combines an absolute jolt with
+  // inter-sample delta and uses whichever acceleration source reports data.
+  let spikes = 0;
+  let lastSpike = 0;
+  let lastMag: number | null = null;
+
+  // Double-shake arming: one deliberate shake arms the toggle (short haptic
+  // blip), a second within DOUBLE_SHAKE_MS confirms it. A post-gesture
+  // suppression window keeps one long continuous shake from counting as
+  // two gestures, and raised gates cut accidental arming (pocket, jog).
+  const DOUBLE_SHAKE_MS = 1400;
+  const GESTURE_COOLDOWN_MS = 600;
+  let armed = false;
+  let armedAt = 0;
+  let suppressUntil = 0;
+
+  interface AccelLike {
+    x: number | null;
+    y: number | null;
+    z: number | null;
+  }
+  const magOf = (o: AccelLike | null): number | null =>
+    o && o.x != null && o.y != null && o.z != null
+      ? Math.hypot(o.x, o.y, o.z)
+      : null;
+
+  /** Remote-debug handle: inspect from chrome://inspect / about:debugging. */
+  (window as unknown as { __jbMotion?: object }).__jbMotion = {
+    evs: 0,
+    lastMag: null,
+    src: "-",
+    state: "idle",
+    gestures: 0,
+  };
+
+  window.addEventListener("devicemotion", (e) => {
+    // Desktops use the Ctrl+Shift+D hotkey; skip motion processing there.
+    if (!("ontouchstart" in window)) return;
+
+    const dbg = (window as unknown as { __jbMotion?: { evs: number; lastMag: unknown; src: string; state: string; gestures: number } })
+      .__jbMotion!;
+    dbg.evs++;
+
+    // Some engines null gravity-included data (no gyro) while `acceleration`
+    // carries values, and vice versa - prefer whichever actually reports.
+    const incl = magOf(e.accelerationIncludingGravity);
+    const mag = incl ?? magOf(e.acceleration);
+    dbg.lastMag = mag?.toFixed(1) ?? null;
+    dbg.src = incl != null ? "g" : mag != null ? "a" : "-";
+    if (mag == null) return;
+
+    const now = Date.now();
+    // Spike = hard jolt past the gravity baseline OR a sharp swing between
+    // consecutive samples (fast samplers smooth absolute peaks; deltas don't).
+    const delta = lastMag == null ? 0 : Math.abs(mag - lastMag);
+    lastMag = mag;
+    if (mag < 23 && delta < 17) return;
+    // Ignore the tail of a gesture that just fired so its trailing wobbles
+    // don't immediately re-arm; lastMag above still updates for continuity.
+    if (now < suppressUntil) return;
+    // Debounce below real shake oscillation spacing (~50-100ms per swing)
+    // so batched delivery still yields three counted peaks per shake.
+    if (now - lastSpike > 80) {
+      spikes++;
+      lastSpike = now;
+    }
+    if (spikes >= 3) {
+      spikes = 0;
+      suppressUntil = now + GESTURE_COOLDOWN_MS;
+      dbg.gestures++;
+      if (armed && now - armedAt <= DOUBLE_SHAKE_MS) {
+        armed = false;
+        armedAt = 0;
+        dbg.state = "toggle";
+        try {
+          navigator.vibrate?.([30, 40, 30]);
+        } catch {}
+        toggle();
+      } else {
+        // First shake (or stale arm): arm and blip so it feels acknowledged.
+        armed = true;
+        armedAt = now;
+        dbg.state = "armed";
+        try {
+          navigator.vibrate?.(15);
+        } catch {}
+      }
+    }
+  });
+  setInterval(() => {
+    const t = Date.now();
+    if (t - lastSpike > 900) {
+      spikes = 0;
+      lastMag = null;
+    }
+    if (armed && t - armedAt > DOUBLE_SHAKE_MS) {
+      armed = false;
+      armedAt = 0;
+      const dbg = (
+        window as unknown as { __jbMotion?: { state: string } }
+      ).__jbMotion;
+      if (dbg) dbg.state = "idle";
+    }
+  }, 500);
+
+  // iOS requires arming motion access inside a user gesture.
+  window.addEventListener(
+    "touchend",
+    () => {
+      const dm = (
+        window as unknown as {
+          DeviceMotionEvent?: { requestPermission?: () => Promise<string> };
+        }
+      ).DeviceMotionEvent;
+      dm?.requestPermission?.().catch(() => {});
+    },
+    { once: true, passive: true },
+  );
+
+  window.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "d") {
+      e.preventDefault();
+      toggle();
+    }
+  });
+
+  // Text refresh cadence (graph samples are separate).
+  setInterval(() => {
+    if (!open) return;
+    probe();
+    render();
+  }, 400);
+
+  // ClientRouter swaps body content on navigation.
+  document.addEventListener("astro:page-load", () => {
+    const node = document.getElementById("jb-net-debug");
+    if (node) node.hidden = !open;
+  });
+</script>

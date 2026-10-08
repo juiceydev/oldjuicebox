@@ -1,0 +1,217 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { getFormattedCommitLabel, getRepoUrl } from "../lib/metadata";
+import { iconSvgHtml } from "../lib/icons";
+import fs from "node:fs";
+
+const footerCommit = getFormattedCommitLabel();
+const canonicalUrl = getRepoUrl();
+
+const rustdocPath = new URL("../../public/rustdoc", import.meta.url).pathname;
+const rustdocExists = fs.existsSync(rustdocPath);
+
+const crates = [
+    { name: "juiceback", label: "juiceback - API Gateway", path: "/rustdoc/juiceback/index.html" },
+    { name: "juicehost", label: "juicehost - Storage Backend", path: "/rustdoc/juicehost/index.html" },
+];
+
+const apidocs = [
+    { label: "OpenAPI JSON (pretty)", path: "/api/docs" },
+    { label: "OpenAPI JSON (minified)", path: "/api/openapi.json" },
+];
+---
+
+<BaseLayout
+    title="Documentation - Juicebox"
+    description="Auto-generated code and API documentation for Juicebox."
+    canonical={canonicalUrl}
+    bodyClass="content-page"
+>
+    <main id="main-content" transition:animate="none">
+        <div class="content-card">
+            <h1>Rust API Documentation</h1>
+            {
+                rustdocExists ? (
+                    <>
+                        <p>
+                            Auto-generated rustdoc documentation for Juicebox's backend Rust crates.
+                        </p>
+                        <ul>
+                            {
+                                crates.map((c) => (
+                                    <li><a href={c.path}>{c.label}</a></li>
+                                ))
+                            }
+                        </ul>
+                    </>
+                ) : (
+                    <>
+                        <p>
+                            Rust documentation has not been generated yet.
+                            Run <code>bun run gen-docs</code> in <code>juicefront/ui/</code>
+                            to generate it, then reload this page.
+                        </p>
+                        <pre><code>bun run gen-docs</code></pre>
+                    </>
+                )
+            }
+            <hr />
+            <h2>HTTP API (OpenAPI)</h2>
+            <p>
+                The HTTP API is documented with OpenAPI. Fetch the raw JSON spec to generate clients or explore endpoints.
+            </p>
+            <ul>
+                {
+                    apidocs.map((a) => (
+                        <li><a href={a.path}>{a.label}</a></li>
+                    ))
+                }
+            </ul>
+            <hr />
+            <h2>Hosting</h2>
+            <p>
+                Juicebox runs as two separate services: <strong>juiceback</strong>
+                (API gateway) and <strong>juicehost</strong> (file storage).
+                You need both running to handle uploads and file serving.
+                QUIC/HTTP/3 is optional but recommended for faster uploads.
+            </p>
+            <h3>Ports</h3>
+            <table>
+                <caption class="sr-only">Service ports and protocols</caption>
+                <tr><th>Service</th><th>Protocol</th><th>Default Port</th><th>Notes</th></tr>
+                <tr><td>juiceback</td><td>TCP (HTTP/1.1 + H2)</td><td>6401</td><td>API endpoint</td></tr>
+                <tr><td>juiceback</td><td>UDP (QUIC / HTTP/3)</td><td>6402</td><td>Fast uploads from modern browsers</td></tr>
+                <tr><td>juicehost</td><td>TCP (HTTP/1.1 + H2)</td><td>6402</td><td>Serves files and handles storage</td></tr>
+                <tr><td>juicehost</td><td>UDP (QUIC / HTTP/3)</td><td>6403</td><td>Fast file push from juiceback</td></tr>
+            </table>
+            <p>
+                UDP and TCP ports are independent -- you can run QUIC on the same
+                port number as a TCP service with no conflict.
+            </p>
+            <h3>How to host</h3>
+            <ol>
+                <li>
+                    <strong>Set environment variables</strong> -- check the rustdoc
+                    for <code>juiceback::config::Config</code> and <code>juicehost::config::Config</code>
+                    to see every available variable.
+                </li>
+                <li>
+                    <strong>Start juicehost</strong> -- it needs a directory for
+                    files and a shared API key with juiceback.
+                </li>
+                <li>
+                    <strong>Start juiceback</strong> -- it needs the juicehost URL
+                    and API key, plus a SQLite database path.
+                </li>
+                <li>
+                    <strong>Build the frontend</strong> -- run <code>bun run build</code>
+                    in <code>juicefront/ui/</code> and serve the <code>dist/</code> with a reverse proxy
+                    (nginx, caddy) that proxies <code>/api/*</code> to juiceback.
+                </li>
+            </ol>
+            <h3>QUIC / HTTP/3</h3>
+            <p>
+                QUIC uses UDP on the port shown above. It is only available when
+                juiceback and juicehost are compiled with the <code>quic</code>
+                feature (default on). The QUIC server reuses the same axum router
+                as TCP so every API endpoint is reachable over HTTP/3.
+            </p>
+            <h3>Environment variables</h3>
+            <p>
+                The only strictly required variable is <code>JUICEHOST_API_KEY</code>,
+                which must be the same on both services. Everything else has a sensible default.
+                Refer to the rustdoc for each crate's config module to see the full list.
+            </p>
+            <h4>juiceback (API gateway)</h4>
+            <p>
+                juiceback is the API gateway. It handles authentication, rate limiting,
+                file uploads, and serves the frontend. It connects to juicehost for
+                file storage and optionally supports QUIC/HTTP/3 for faster uploads
+                from modern browsers.
+            </p>
+            <h4>juicehost (file storage)</h4>
+            <p>
+                juicehost is the storage backend. It stores files on disk (or S3-compatible
+                object storage), handles file serving, and manages cleanup of expired files.
+                It exposes an internal API for juiceback to push and manage files.
+            </p>
+            <h4>juicefront (frontend)</h4>
+            <p>
+                The frontend is an Astro SSR application. It connects to juiceback
+                for uploads and file management. In development it runs on its own
+                dev server; in production it is built to static files and served
+                behind a reverse proxy.
+            </p>
+            <hr />
+            <h2>Callgraph</h2>
+            <p>
+                A callgraph shows how functions call goes in a fancy little graph.
+                It's useful if you want to understand the architecture!!
+            </p>
+            <h3>Install</h3>
+            <pre><code>cargo install cargo-callgraph</code></pre>
+            <p>
+                You also need <a href="https://graphviz.org/">graphviz</a> installed
+                to render the DOT output as an image!!
+            </p>
+            <h3>Generate</h3>
+            <p>
+                From the workspace root (<code>juicebox2back/</code>):
+            </p>
+            <pre><code>{`# Full workspace graph (JSON + DOT)
+cargo callgraph --json target/callgraph.json --dot target/callgraph.dot
+
+# Render as PNG or SVG
+dot -Tpng target/callgraph-workspace.dot -o callgraph.png
+dot -Tsvg:cairo target/callgraph-workspace.dot -o callgraph.svg`}</code></pre>
+            <h3>Browse the graph</h3>
+            <p>
+                You can traverse the JSON output without rendering an image:
+            </p>
+            <pre><code>{`# What does main call? (depth 2)
+cargo callgraph traverse --graph target/callgraph.json -i main -n 2 -o
+
+# What calls upload_handler? (incoming)
+cargo callgraph traverse --graph target/callgraph.json -i upload_handler -n 2`}</code></pre>
+            <hr />
+            <h2>Testing</h2>
+            <p>
+                The project has a buncha tests for juiceback and juicehost;
+            </p>
+            <h3>Run all tests</h3>
+            <pre><code>cargo test --workspace</code></pre>
+            <h3>Run with cargo-nextest (cargo test suks)</h3>
+            <p>
+                <a href="https://nexte.st/">cargo-nextest</a> is a faster test runner
+                that runs tests in parallel by default with better output and built-in
+                retries. Install it once:
+            </p>
+            <pre><code>cargo install cargo-nextest --locked</code></pre>
+            <p>Then run all tests:</p>
+            <pre><code>cargo nextest run --workspace</code></pre>
+            <p>
+                nextest automatically runs each test in its own process, which catches
+                issues like leaked state between tests that <code>cargo test</code> might miss.
+            </p>
+            <h3>Run specific tests</h3>
+            <pre><code>{`# By name filter
+cargo nextest run -p juiceback -- test_insert_get_file
+
+# By test binary
+cargo nextest run -p juiceback --test admin_test
+
+# Unit tests only (inline #[cfg(test)] modules)
+cargo nextest run -p juiceback --lib
+
+# Integration tests only (tests/ directories)
+cargo nextest run -p juicehost --test handlers_test`}</code></pre>
+        </div>
+    </main>
+</BaseLayout>
+
+<style>
+    .content-card th, .content-card td {
+        text-align: left;
+        padding: 0.25rem 0.5rem;
+    }
+</style>

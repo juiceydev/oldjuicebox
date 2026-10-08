@@ -1,0 +1,27 @@
+# Privacy Policy - [Instance Name]
+
+Last updated: [Date]
+
+This Privacy Policy explains what data [Instance Name] ("we," "us," "the Service") processes when you use it, and your rights regarding that data.
+
+[Describe your legal status here: e.g., "We are an individual operating as a personal project" or "We are a registered company."]
+
+When you upload a file, we store your IP address encrypted with AES-256-GCM and compute a separate HMAC hash for rate-limiting and abuse prevention. The encrypted IP may be decrypted by administrators when required for abuse investigation or legal obligations. The HMAC hash is not reversible. Both the encrypted IP and the hash are deleted when the associated file expires, except where retained for active bans or legal requirements.
+
+We also set a cookie containing a deletion token, which lets you find and delete files you've uploaded during your session. This cookie is strictly necessary for that function and expires automatically when the associated file expires.
+
+[Describe any analytics or third-party services you use, such as: "We use [provider] for basic aggregate analytics. This does not involve individual tracking or fingerprinting."]
+
+Files you upload are stored so the Service can serve them via the link it generates. Files are deleted automatically according to the instance TTL configuration.
+
+We don't require or collect accounts, names, or email addresses. We don't sell or share data with advertisers, build cross-site profiles, use tracking cookies, or store raw IP addresses in plaintext.
+
+[Describe where your server is hosted, e.g., "The Service is currently hosted on [provider] in [location]."]
+
+To exercise any data rights, contact [contact email]. Since we don't collect identifying information, we may not be able to locate data tied to "you" specifically beyond your current session.
+
+The Service is not directed at children under [age]. We don't knowingly collect personal data from children.
+
+We may update this Privacy Policy from time to time. The "Last updated" date reflects the most recent revision. Continued use after changes constitutes acceptance.
+
+Questions can be sent to [contact email].

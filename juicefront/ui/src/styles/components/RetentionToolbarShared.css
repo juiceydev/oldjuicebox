@@ -1,0 +1,231 @@
+.rttinfo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--juice-400);
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  width: max-content;
+}
+
+.rttlabel-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rttlabel {
+  color: var(--juice-300);
+  font-size: 18px;
+}
+
+.rtticon {
+  color: var(--orange-500);
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rtticon svg {
+  display: block;
+}
+
+.rttvalue-container {
+  width: max-content;
+  height: 1.5em;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+}
+
+.rttvalue-wrapper {
+  display: flex;
+  gap: 0.3em;
+  font-family: "Secondary", "Unifont", monospace;
+  font-size: 18px;
+  color: var(--juice-200);
+}
+
+.rttnumber,
+.rttunit,
+.rttunit-base,
+.rttunit-s {
+  display: inline-block;
+}
+
+.rttnumber {
+  white-space: pre;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rttunit-s {
+  margin-left: -0.3em;
+}
+
+.animate-up-enter {
+  animation: slide-up-enter 0.15s ease-out forwards;
+}
+.animate-down-enter {
+  animation: slide-down-enter 0.15s ease-out forwards;
+}
+.animate-up-exit {
+  animation: slide-up-exit 0.15s ease-out forwards;
+}
+.animate-down-exit {
+  animation: slide-down-exit 0.15s ease-out forwards;
+}
+
+@keyframes slide-up-enter {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes slide-down-enter {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes slide-up-exit {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+@keyframes slide-down-exit {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.slider-wrapper {
+  position: relative;
+  width: 100%;
+  height: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.rttslider {
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--juice-800);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  margin-top: 6px;
+  z-index: 2;
+  touch-action: none;
+}
+
+.rttslider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--orange-500);
+  border: 2px solid var(--juice-900);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.2s;
+}
+.rttslider:hover::-webkit-slider-thumb {
+  background: var(--orange-400);
+  transform: scale(1.15);
+}
+.rttslider:active::-webkit-slider-thumb {
+  transform: scale(0.9);
+}
+
+.rttslider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--orange-400);
+  outline-offset: 3px;
+}
+
+.rttslider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--orange-500);
+  border: 2px solid var(--juice-900);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.2s;
+}
+.rttslider:hover::-moz-range-thumb {
+  background: var(--orange-400);
+  transform: scale(1.15);
+}
+.rttslider:active::-moz-range-thumb {
+  transform: scale(0.9);
+}
+
+.rttslider:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--orange-400);
+  outline-offset: 3px;
+}
+
+.slider-ticks {
+  position: absolute;
+  top: 18px;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tick {
+  position: absolute;
+  left: var(--tick-left, 0);
+  width: 2px;
+  height: 4px;
+  background-color: var(--juice-700);
+  border-radius: 1px;
+  transform: translateX(-50%);
+  transition:
+    background-color 0.3s ease,
+    height 0.3s ease,
+    transform 0.3s ease;
+}
+.tick.active {
+  background-color: var(--orange-500);
+  height: 6px;
+  transform: translateX(-50%) scaleY(1.5);
+}
+
+@media (max-width: 768px) {
+  .rttoolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+}

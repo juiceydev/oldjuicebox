@@ -1,0 +1,110 @@
+---
+import Icon from "./Icon.astro";
+import { getMoreMenuItems } from "../lib/more-menu";
+import { resolveLocale, t } from "../i18n";
+
+interface ActionItem {
+    id?: string;
+    label: string;
+    icon?: string;
+    ariaLabel?: string;
+    href?: string;
+    disabled?: boolean;
+}
+
+interface Props {
+    id?: string;
+    heading?: string;
+    actions?: ActionItem[];
+}
+
+const { id, heading = "Upload actions", actions } = Astro.props as Props;
+
+const locale = resolveLocale(Astro.currentLocale);
+const localePrefix = locale === "en" ? "" : `/${locale}`;
+const lp = (path: string) => `${localePrefix}${path}`;
+
+const defaultActions: ActionItem[] = [
+    { id: "files", label: "Files", icon: "files" },
+    { id: "report", label: "Report", icon: "report" },
+    { id: "more", label: "More...", icon: "more" },
+];
+
+const list = actions && actions.length > 0 ? actions : defaultActions;
+
+const ROUTES: Record<string, string> = {
+    back: lp("/"),
+    files: lp("/files"),
+    report: lp("/report"),
+};
+
+const MORE_ITEMS = getMoreMenuItems(locale, lp);
+---
+
+<span id="actions-area" tabindex="-1" aria-hidden="true" style="position:absolute"></span>
+<nav id={id} class="act" aria-label={heading} data-act>
+    {
+        list.map((action) =>
+            action.id === "more" ? (
+                    <details class="select-details" data-select-details>
+                    <summary
+                        class="action-btn"
+                        aria-haspopup="menu"
+                        aria-label={action.ariaLabel ?? action.label}
+                        aria-describedby={`${id}-more-desc`}
+                        title={action.label}
+                    >
+                        <span class="action-btn__icon">
+                            <Icon name={action.icon ?? "more"} />
+                        </span>
+                        <span>{action.label}</span>
+                    </summary>
+                    <span id={`${id}-more-desc`} class="sr-only">
+                        {t(locale, "sr.more_menu_sr")}
+                    </span>
+                    <summary class="select-backdrop" data-select-backdrop></summary>
+                    <summary class="select-close-btn nojs-only">{t(locale, "sr.close_btn")}</summary>
+                    <div class="select-menu select-menu--details" role="menu" aria-label={t(locale, "sr.more_options")} aria-describedby={`${id}-more-desc`}>
+                        <div class="select-options-list">
+                            {MORE_ITEMS.map((item) =>
+                                item === null ? (
+                                    <div class="select-option--divider" />
+                                ) : (
+                                    <a
+                                        class={
+                                            item.jsOnly
+                                                ? "select-option js-only"
+                                                : "select-option"
+                                        }
+                                        role="menuitem"
+                                        href={item.href}
+                                    >
+                                        <span class="select-option__icon">
+                                            <Icon name={item.icon} />
+                                        </span>
+                                        <span class="select-option__label">
+                                            {item.label}
+                                        </span>
+                                    </a>
+                                ),
+                            )}
+                        </div>
+                    </div>
+                </details>
+            ) : (
+                <a
+                    class="action-btn"
+                    href={action.href ?? ROUTES[action.id ?? ""] ?? "/"}
+                    aria-label={action.ariaLabel ?? action.label}
+                    title={action.label}
+                    data-action-id={action.id}
+                >
+                    <span class="action-btn__icon">
+                        <Icon name={action.icon ?? "more"} />
+                    </span>
+                    <span>{action.label}</span>
+                </a>
+            ),
+        )
+    }
+</nav>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_upload_handler","delete_upload_handler","get_upload_handler","options_handler","parse_tus_metadata","patch_upload_handler","tus_routes"]};

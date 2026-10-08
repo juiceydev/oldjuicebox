@@ -1,0 +1,69 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ContentCard from "../components/ContentCard.astro";
+import { getFormattedCommitLabel, getRepoUrl } from "../lib/metadata";
+import { t, resolveLocale } from "../i18n";
+
+const locale = resolveLocale(Astro.currentLocale);
+const footerCommit = getFormattedCommitLabel();
+const canonicalUrl = getRepoUrl();
+
+const customActions = [
+    {
+        id: "back",
+        label: t(locale, "nav.back"),
+        icon: "back",
+        ariaLabel: t(locale, "nav.back_aria"),
+    },
+    { id: "files", label: t(locale, "nav.files"), icon: "files" },
+    { id: "more", label: t(locale, "nav.more"), icon: "more" },
+];
+
+const faqs = [
+    { q: t(locale, "faq.q1"), a: t(locale, "faq.a1") },
+    { q: t(locale, "faq.q2"), a: t(locale, "faq.a2") },
+    { q: t(locale, "faq.q3"), a: t(locale, "faq.a3") },
+    { q: t(locale, "faq.q4"), a: t(locale, "faq.a4") },
+    { q: t(locale, "faq.q5"), a: t(locale, "faq.a5") },
+    { q: t(locale, "faq.q6"), a: t(locale, "faq.a6") },
+    { q: t(locale, "faq.q7"), a: t(locale, "faq.a7") },
+    { q: t(locale, "faq.q8"), a: t(locale, "faq.a8") },
+    { q: t(locale, "faq.q9"), a: t(locale, "faq.a9") },
+    { q: t(locale, "faq.q10"), a: t(locale, "faq.a10") },
+];
+---
+
+<BaseLayout
+    title={`${t(locale, "faq.title")} - Juicebox`}
+    description={t(locale, "faq.subtitle")}
+    canonical={canonicalUrl}
+    bodyClass="content-page"
+>
+    <main id="main-content" transition:animate="none">
+        <ContentCard
+            title={t(locale, "faq.title")}
+            subtitle={t(locale, "faq.subtitle")}
+            footerCommit={footerCommit}
+            footerRepoUrl={canonicalUrl}
+            actions={customActions}
+        >
+            <div class="faq-accordion" role="list">
+                {
+                    faqs.map((item, i) => (
+                        <details class="faq-item" role="listitem" open={i === 0}>
+                            <summary class="faq-question">
+                                <span class="faq-chevron" aria-hidden="true" />
+                                {item.q}
+                            </summary>
+                            <div class="faq-answer">
+                                <div class="faq-answer-inner">
+                                    <p>{item.a}</p>
+                                </div>
+                            </div>
+                        </details>
+                    ))
+                }
+            </div>
+        </ContentCard>
+    </main>
+</BaseLayout>

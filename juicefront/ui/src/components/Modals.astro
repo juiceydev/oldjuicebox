@@ -1,0 +1,751 @@
+---
+/**
+ * Modals for Share, Shortcuts, Language, and Host.
+ * Works without JS via CSS :target pseudo-class.
+ * JS adds: escape-to-close, focus trapping, language persistence,
+ * clipboard copy, native share, and auto-redirect to saved locale.
+ */
+import { iconSvgHtml } from "../lib/icons";
+import { LOCALES, LOCALE_PREFIX_RE, resolveLocale, t } from "../i18n";
+import { readCookieHost, resolveEffectiveConfig } from "../lib/server-host";
+
+const currentLocale = resolveLocale(Astro.currentLocale);
+const shareUrl = Astro.url.href;
+const encodedUrl = encodeURIComponent(shareUrl);
+const encodedText = encodeURIComponent(t(currentLocale, "share.check_out", { url: shareUrl }));
+
+const pathname = Astro.url.pathname;
+const basePath = pathname.replace(LOCALE_PREFIX_RE, "/") || "/";
+
+let dangerLevel = "high";
+let serverQuickLink = true;
+let serverQuic = true;
+let serverCustomId = true;
+let serverUltrafast = false;
+let serverCobalt = false;
+let uploadMode = "standard";
+let maxFileSizeBytes = 524288000;
+let allowedTtlHours = "[0.5,1,6,12,24,72,168]";
+let defaultTtlHours = "24";
+let publicBaseUrl = "";
+const savedHost = readCookieHost(Astro.request.headers.get("cookie"));
+const { config: cfg } = await resolveEffectiveConfig(savedHost);
+if (cfg.danger_level) dangerLevel = cfg.danger_level;
+if (typeof cfg.quick_link === "boolean") serverQuickLink = cfg.quick_link;
+if (typeof cfg.quic === "boolean") serverQuic = cfg.quic;
+if (typeof cfg.custom_id === "boolean") serverCustomId = cfg.custom_id;
+if (typeof cfg.ultrafast === "boolean") serverUltrafast = cfg.ultrafast;
+if (typeof cfg.cobalt === "boolean") serverCobalt = cfg.cobalt;
+if (typeof cfg.upload_mode === "string") uploadMode = cfg.upload_mode;
+if (typeof cfg.max_file_size_bytes === "number") maxFileSizeBytes = cfg.max_file_size_bytes;
+if (Array.isArray(cfg.allowed_ttl_hours)) allowedTtlHours = JSON.stringify(cfg.allowed_ttl_hours);
+if (typeof cfg.default_ttl_hours === "number") defaultTtlHours = String(cfg.default_ttl_hours);
+if (typeof cfg.public_base_url === "string") publicBaseUrl = cfg.public_base_url;
+
+const blockedTypesKey = `host.blocked_${dangerLevel}` as const;
+const blockedTypesText = t(currentLocale, blockedTypesKey) || t(currentLocale, "host.blocked_high");
+
+const shortcuts = [
+  { keys: ["Ctrl", "U"], action: t(currentLocale, "shortcuts.file_picker") },
+  { keys: ["Ctrl", "V"], action: t(currentLocale, "shortcuts.paste_upload") },
+  { keys: ["Ctrl", "C"], action: t(currentLocale, "shortcuts.copy_file_url") },
+  { keys: ["Esc"], action: t(currentLocale, "shortcuts.close_menu") },
+  { keys: ["?"], action: t(currentLocale, "shortcuts.show_dialog") },
+  { keys: ["G", "H"], action: t(currentLocale, "shortcuts.go_home") },
+  { keys: ["G", "F"], action: t(currentLocale, "shortcuts.go_files") },
+  { keys: ["G", "R"], action: t(currentLocale, "shortcuts.go_report") },
+  { keys: ["G", "D"], action: t(currentLocale, "shortcuts.go_docs") },
+  { keys: ["G", "S"], action: t(currentLocale, "shortcuts.open_share") },
+  { keys: ["G", "L"], action: t(currentLocale, "shortcuts.open_language") },
+  { keys: ["G", "T"], action: t(currentLocale, "shortcuts.open_settings") },
+];
+---
+
+<div id="server-config" hidden data-quick-link={serverQuickLink ? "true" : "false"} data-quic={serverQuic ? "true" : "false"} data-custom-id={serverCustomId ? "true" : "false"} data-ultrafast={serverUltrafast ? "true" : "false"} data-cobalt={serverCobalt ? "true" : "false"} data-upload-mode={uploadMode} data-danger-level={dangerLevel} data-max-file-size-bytes={maxFileSizeBytes} data-allowed-ttl-hours={allowedTtlHours} data-default-ttl-hours={defaultTtlHours} data-public-base-url={publicBaseUrl}></div>
+
+<div id="share-modal" class="mdloverlay mdl-target" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
+  <a href="#!" class="mdl-target__backdrop" aria-label="Close modal"></a>
+  <div class="mdlcontent">
+    <div class="mdlheader">
+      <h2 id="share-modal-title" class="mdltitle">
+        <span set:html={iconSvgHtml("share", 24)} class="mdltitle-icon" />
+        {t(currentLocale, "share.title")}
+      </h2>
+      <a href="#!" class="mdlclose" aria-label={t(currentLocale, "modal.close")}>
+        <span set:html={iconSvgHtml("close", 24)} />
+      </a>
+    </div>
+    <div class="mdlbody">
+      <div class="share-grid">
+        <a
+          class="share-grid__btn share-grid__btn--bluesky"
+          href={`https://bsky.app/intent/compose?text=${encodedUrl}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span set:html={iconSvgHtml("brand-bluesky", 20)} aria-hidden="true" />
+          <span>Bluesky</span>
+        </a>
+        <a
+          class="share-grid__btn share-grid__btn--twitter"
+           href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodeURIComponent(t(currentLocale, "share.check_out", { url: "" }))}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span set:html={iconSvgHtml("brand-twitter", 20)} aria-hidden="true" />
+          <span>Twitter</span>
+        </a>
+        <a
+          class="share-grid__btn share-grid__btn--reddit"
+          href={`https://reddit.com/submit?url=${encodedUrl}&title=Juicebox`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span set:html={iconSvgHtml("brand-reddit", 20)} aria-hidden="true" />
+          <span>Reddit</span>
+        </a>
+        <a
+          class="share-grid__btn share-grid__btn--mastodon"
+          href={`https://mastodon.social/share?text=${encodedText}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span set:html={iconSvgHtml("brand-mastodon", 20)} aria-hidden="true" />
+          <span>Mastodon</span>
+        </a>
+        <a
+          class="share-grid__btn share-grid__btn--linkedin"
+          href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span set:html={iconSvgHtml("brand-linkedin", 20)} aria-hidden="true" />
+          <span>LinkedIn</span>
+        </a>
+        <a
+          class="share-grid__btn share-grid__btn--telegram"
+           href={`https://t.me/share/url?url=${encodedUrl}&text=${encodeURIComponent(t(currentLocale, "share.check_out", { url: "" }))}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span set:html={iconSvgHtml("brand-telegram", 20)} aria-hidden="true" />
+          <span>Telegram</span>
+        </a>
+        <a
+          class="share-grid__btn share-grid__btn--whatsapp"
+          href={`https://api.whatsapp.com/send?text=${encodedText}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span set:html={iconSvgHtml("brand-whatsapp", 20)} aria-hidden="true" />
+          <span>WhatsApp</span>
+        </a>
+        <a
+          class="share-grid__btn share-grid__btn--email"
+          href={`mailto:?subject=Juicebox&body=${encodedText}`}
+        >
+          <span set:html={iconSvgHtml("email", 20)} aria-hidden="true" />
+          <span>Email</span>
+        </a>
+      </div>
+      <div class="share-url-field">
+        <label class="form-label" for="share-url-input">{t(currentLocale, "share.copy")}</label>
+        <input
+          id="share-url-input"
+          type="text"
+          class="form-input share-url-input"
+          value={shareUrl}
+          readonly
+          onclick="this.select()"
+        />
+      </div>
+    </div>
+    <div class="mdlfooter">
+      <a href="#!" class="mdlbtn mdlbtn--secondary">{t(currentLocale, "modal.done")}</a>
+    </div>
+  </div>
+</div>
+
+<div id="shortcuts-modal" class="mdloverlay mdl-target" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
+  <a href="#!" class="mdl-target__backdrop" aria-label="Close modal"></a>
+  <div class="mdlcontent">
+    <div class="mdlheader">
+      <h2 id="shortcuts-modal-title" class="mdltitle">
+        <span set:html={iconSvgHtml("command", 24)} class="mdltitle-icon" />
+        {t(currentLocale, "shortcuts.title")}
+      </h2>
+      <a href="#!" class="mdlclose" aria-label={t(currentLocale, "modal.close")}>
+        <span set:html={iconSvgHtml("close", 24)} />
+      </a>
+    </div>
+    <div class="mdlbody">
+      <ul class="shortcut-list">
+        {shortcuts.map((s) => (
+          <li class="shortcut-row">
+            <span>{s.action}</span>
+            <span class="shortcut-keys">
+              {s.keys.map((k) => <kbd>{k}</kbd>)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+    <div class="mdlfooter">
+      <a href="#!" class="mdlbtn mdlbtn--primary">{t(currentLocale, "modal.done")}</a>
+    </div>
+  </div>
+</div>
+
+<div id="language-modal" class="mdloverlay mdl-target" role="dialog" aria-modal="true" aria-labelledby="language-modal-title">
+  <a href="#!" class="mdl-target__backdrop" aria-label="Close modal"></a>
+  <div class="mdlcontent language-modal">
+    <div class="mdlheader">
+      <h2 id="language-modal-title" class="mdltitle">
+        <span set:html={iconSvgHtml("globe", 24)} class="mdltitle-icon" />
+        {t(currentLocale, "language.title")}
+      </h2>
+      <a href="#!" class="mdlclose" aria-label={t(currentLocale, "modal.close")}>
+        <span set:html={iconSvgHtml("close", 24)} />
+      </a>
+    </div>
+    <div class="mdlbody">
+      <p class="language-modal__hint">{t(currentLocale, "language.hint")}</p>
+      <ul class="language-list" aria-label={t(currentLocale, "language.title")}>
+        {LOCALES.map((l) => {
+          const href = l.code === "en" ? basePath : `/${l.code}${basePath === "/" ? "" : basePath}`;
+          return (
+            <li>
+              <a
+                class={`language-option${l.code === currentLocale ? " language-option--active" : ""}`}
+                href={href}
+                data-lang-link={l.code}
+              >
+                <span class="language-option__label">{l.label}</span>
+                <span class="language-option__code">{l.code}</span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+    <div class="mdlfooter">
+      <a href="#!" class="mdlbtn mdlbtn--primary">{t(currentLocale, "modal.done")}</a>
+    </div>
+  </div>
+</div>
+
+<div id="pair-modal" class="mdloverlay mdl-target" role="dialog" aria-modal="true" aria-labelledby="pair-modal-title">
+  <a href="#!" class="mdl-target__backdrop" aria-label={t(currentLocale, "modal.close")}></a>
+  <div class="mdlcontent">
+    <div class="mdlheader">
+      <h2 id="pair-modal-title" class="mdltitle">
+        <span set:html={iconSvgHtml("smartphone", 24)} class="mdltitle-icon" />
+        {t(currentLocale, "pair.title")}
+      </h2>
+      <a href="#!" class="mdlclose" aria-label={t(currentLocale, "modal.close")}>
+        <span set:html={iconSvgHtml("close", 24)} />
+      </a>
+    </div>
+    <div class="mdlbody">
+      <div id="pair-not-paired" class="pair-section">
+        <p class="pair-hint">{t(currentLocale, "pair.not_paired")}</p>
+        <button type="button" id="pair-generate-btn" class="mdlbtn mdlbtn--primary">
+          {t(currentLocale, "pair.generate_code")}
+        </button>
+        <div id="pair-code-display" class="pair-code-display" hidden>
+          <p>{t(currentLocale, "pair.instructions")}</p>
+          <button type="button" class="pair-code" id="pair-code-text" aria-label="Copy pairing code">
+            <div class="pair-code__text-wrapper">
+              <span class="pair-code__copied-text">Copied!</span>
+              <span class="pair-code__code">----</span>
+            </div>
+            <Fragment set:html={iconSvgHtml("copy", 24, "pair-code__copy-icon")} />
+          </button>
+          <p class="pair-expires" id="pair-expires-text"></p>
+        </div>
+      </div>
+
+      <div id="pair-paired" class="pair-section" hidden>
+        <p class="pair-device-name" id="pair-device-name"></p>
+        <p class="pair-paired-date" id="pair-paired-date"></p>
+        <div id="pair-device-status" class="pair-device-status">
+          <span id="pair-status-label" class="pair-status-label">Not Connected</span>
+        </div>
+        <button type="button" id="pair-unpair-btn" class="mdlbtn mdlbtn--danger">
+          {t(currentLocale, "pair.unpair")}
+        </button>
+      </div>
+
+      <div id="pair-status" class="pair-status" hidden></div>
+    </div>
+    <div class="mdlfooter">
+      <a href="/download" class="pair-download-link" target="_blank" rel="noopener">
+        Download juicebox-plus
+      </a>
+      <a href="#!" class="mdlbtn mdlbtn--secondary">{t(currentLocale, "modal.done")}</a>
+    </div>
+  </div>
+</div>
+
+<div id="host-modal" class="mdloverlay mdl-target" role="dialog" aria-modal="true" aria-labelledby="host-modal-title">
+  <a href="#!" class="mdl-target__backdrop" aria-label="Close modal"></a>
+  <div class="mdlcontent host-modal">
+    <div class="mdlheader">
+      <h2 id="host-modal-title" class="mdltitle">
+        <span set:html={iconSvgHtml("settings", 24)} class="mdltitle-icon" />
+        {t(currentLocale, "host.title")}
+      </h2>
+      <a href="#!" class="mdlclose" aria-label={t(currentLocale, "modal.close")}>
+        <span set:html={iconSvgHtml("close", 24)} />
+      </a>
+    </div>
+    <div class="mdlbody">
+      <p class="host-modal__hint">{t(currentLocale, "host.hint")}</p>
+      <div class="form-field">
+        <label class="form-label" for="host-input">{t(currentLocale, "host.label")}</label>
+        <input id="host-input" type="text" class="form-input host-input" data-host-input="" placeholder="f.custom.box" />
+        <div class="host-modal-actions js-only">
+          <button type="button" class="mdlbtn mdlbtn--secondary host-check-btn" data-host-check="">{t(currentLocale, "host.check")}</button>
+          <button type="button" class="mdlbtn mdlbtn--primary host-apply-btn" data-host-apply="">{t(currentLocale, "host.apply")}</button>
+          <span class="host-status" data-host-status=""></span>
+        </div>
+      </div>
+      <div class="host-options-group">
+        <label class="form-label">{t(currentLocale, "host.options")}</label>
+        <div class="form-field">
+          <label class="select-option select-option--toggle">
+            <input
+              type="checkbox"
+              data-quic-toggle=""
+              aria-label={t(currentLocale, "host.quic")}
+            />
+            <span class="select-option__icon select-option__check" aria-hidden="true">
+              <span class="check-off"><Fragment set:html={iconSvgHtml("checkbox", 24)} /></span>
+              <span class="check-on"><Fragment set:html={iconSvgHtml("checkbox-on", 24)} /></span>
+            </span>
+            <span class="select-option__text">
+              <span class="select-option__label">{t(currentLocale, "host.quic")}</span>
+              <span class="select-option__desc">{t(currentLocale, "host.quic_desc")}</span>
+            </span>
+          </label>
+        </div>
+        <div class="form-field">
+          <label class="select-option select-option--toggle">
+            <input
+              type="checkbox"
+              data-quick-link-toggle=""
+              aria-label={t(currentLocale, "host.quick_link")}
+            />
+            <span class="select-option__icon select-option__check" aria-hidden="true">
+              <span class="check-off"><Fragment set:html={iconSvgHtml("checkbox", 24)} /></span>
+              <span class="check-on"><Fragment set:html={iconSvgHtml("checkbox-on", 24)} /></span>
+            </span>
+            <span class="select-option__text">
+              <span class="select-option__label">{t(currentLocale, "host.quick_link")}</span>
+              <span class="select-option__desc">{t(currentLocale, "host.quick_link_desc")}</span>
+            </span>
+          </label>
+        </div>
+        <div class="form-field">
+          <label class="select-option select-option--toggle">
+            <input
+              type="checkbox"
+              data-ultrafast-toggle=""
+              aria-label="UltraFast"
+            />
+            <span class="select-option__icon select-option__check" aria-hidden="true">
+              <span class="check-off"><Fragment set:html={iconSvgHtml("checkbox", 24)} /></span>
+              <span class="check-on"><Fragment set:html={iconSvgHtml("checkbox-on", 24)} /></span>
+            </span>
+            <span class="select-option__text">
+              <span class="select-option__label">UltraFast</span>
+              <span class="select-option__desc">Upload directly from your device (requires paired device)</span>
+            </span>
+          </label>
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">{t(currentLocale, "host.blocked_types")}</label>
+        <div class="blocked-types-info" data-blocked-types-info>
+          <p class="blocked-types-text" data-blocked-types-text>{blockedTypesText}</p>
+        </div>
+      </div>
+    </div>
+    <div class="mdlfooter">
+      <a href="#!" class="mdlbtn mdlbtn--secondary">{t(currentLocale, "modal.done")}</a>
+    </div>
+  </div>
+</div>
+
+<div data-i18n-config data-locale-codes={JSON.stringify(LOCALES.map(l => l.code))} data-default-locale="en" hidden aria-hidden="true"></div>
+
+<div id="chord-indicator" class="chord-indicator" aria-live="polite" hidden>
+  <span class="chord-indicator__keys"></span>
+</div>
+
+<style>
+  .chord-indicator {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 0 1.75rem 1.75rem;
+    background: none;
+    box-shadow: inset 120px -100px 120px -60px rgba(0, 0, 0, 0.5);
+    font-family: "Secondary", "Unifont", monospace;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+  .chord-indicator[hidden] {
+    display: flex;
+    opacity: 0;
+  }
+  .chord-indicator--active {
+    opacity: 1;
+  }
+  .chord-indicator__keys {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .chord-indicator__keys span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 9rem;
+    height: 4rem;
+    font-size: 2.25rem;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--clr-text, #555) 45%, transparent);
+  }
+</style>
+
+<script is:inline>
+(function () {
+  var cfg = document.querySelector("[data-i18n-config]");
+  var LOCALE_CODES = JSON.parse(cfg.dataset.localeCodes);
+  var defaultLocale = cfg.dataset.defaultLocale;
+  var nonDefault = LOCALE_CODES.filter(function(c) { return c !== defaultLocale; });
+  var LOCALE_RE = new RegExp("^\\/(" + nonDefault.join("|") + ")(\\/|$)");
+  var VALID = new Set(LOCALE_CODES);
+  var lastFocus = null;
+
+  var chordEl = document.getElementById("chord-indicator");
+  var chordKeysEl = chordEl ? chordEl.querySelector(".chord-indicator__keys") : null;
+
+  function localePath(path) {
+    var locale = currentUrlLocale();
+    return locale === "en" ? path : "/" + locale + path;
+  }
+
+  function navigateTo(path) {
+    var a = document.createElement("a");
+    a.href = localePath(path);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function adTestingOn() {
+    try {
+      return document.cookie.split("; ").some(function(c) {
+        var eq = c.indexOf("=");
+        return eq > 0 && c.slice(0, eq) === "ADTESTING" && c.slice(eq + 1).toUpperCase() === "TRUE";
+      });
+    } catch (e) {}
+    return false;
+  }
+
+  function toggleAdTesting() {
+    var on = adTestingOn();
+    var next = on ? "false" : "true";
+    try { document.cookie = "ADTESTING=" + next + "; path=/; max-age=31536000; samesite=lax"; } catch (e) {}
+    try { localStorage.setItem("ADTESTING", next); } catch (e) {}
+  }
+
+  var CHORDS = {
+    "g": {
+      "h": function() { navigateTo("/"); },
+      "f": function() { navigateTo("/files"); },
+      "r": function() { navigateTo("/report"); },
+      "d": function() { navigateTo("/docs"); },
+      "s": function() { location.hash = "#share-modal"; },
+      "l": function() { location.hash = "#language-modal"; },
+      "t": function() { location.hash = "#host-modal"; },
+      "a": {
+        "d": {
+          "e": function() { toggleAdTesting(); window.location.reload(); }
+        }
+      }
+    }
+  };
+
+  function resolveChord(path) {
+    var node = CHORDS;
+    for (var i = 0; i < path.length; i++) {
+      if (!node) return undefined;
+      node = node[path[i]];
+    }
+    return node;
+  }
+
+  var chordPending = null;
+  var chordTimer = null;
+  var CHORD_TIMEOUT = 4000;
+
+  var chordHideTimer = null;
+
+  function showChordIndicator(keys) {
+    if (!chordEl || !chordKeysEl) return;
+    if (chordHideTimer) { clearTimeout(chordHideTimer); chordHideTimer = null; }
+    chordKeysEl.innerHTML = "";
+    keys.forEach(function(k) {
+      var span = document.createElement("span");
+      span.textContent = k;
+      chordKeysEl.appendChild(span);
+    });
+    chordEl.hidden = false;
+    chordEl.classList.add("chord-indicator--active");
+  }
+
+  function hideChordIndicator() {
+    if (!chordEl) return;
+    chordEl.classList.remove("chord-indicator--active");
+    if (chordHideTimer) clearTimeout(chordHideTimer);
+    chordHideTimer = setTimeout(function() {
+      chordHideTimer = null;
+      chordEl.hidden = true;
+    }, 200);
+  }
+
+  function clearChord() {
+    chordPending = null;
+    if (chordTimer) { clearTimeout(chordTimer); chordTimer = null; }
+    hideChordIndicator();
+  }
+
+  function currentUrlLocale() {
+    var m = location.pathname.match(LOCALE_RE);
+    return m ? m[1] : "en";
+  }
+
+  function stripLocale(p) {
+    return p.replace(LOCALE_RE, "/") || "/";
+  }
+
+  function redirectToSavedLocale() {
+    var saved = null;
+    try { saved = localStorage.getItem("language"); } catch (e) {}
+    if (!saved || !VALID.has(saved)) return;
+    var urlLocale = currentUrlLocale();
+    if (saved === urlLocale) return;
+    var base = stripLocale(location.pathname);
+    location.href = saved === "en" ? base : "/" + saved + (base === "/" ? "" : base);
+  }
+
+  function saveLanguageOnNav() {
+    document.querySelectorAll("[data-lang-link]").forEach(function(a) {
+      a.addEventListener("click", function() {
+        try { localStorage.setItem("language", a.dataset.langLink); } catch (e) {}
+      });
+    });
+  }
+
+  function initShareCopy() {
+    document.querySelectorAll("[data-share-copy]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        navigator.clipboard.writeText(location.href).then(function() {
+          var span = btn.querySelector("span");
+          if (span) {
+            var orig = span.textContent;
+            span.textContent = "Copied!";
+            setTimeout(function() { span.textContent = orig; }, 2000);
+          }
+        }).catch(function() {});
+      });
+    });
+  }
+
+  function initShareNative() {
+    document.querySelectorAll("[data-share-native]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        if (navigator.share) navigator.share({ title: "Juicebox", url: location.href }).catch(function() {});
+      });
+    });
+  }
+
+  function trapFocus(e, modal) {
+    if (e.key !== "Tab") return;
+    var focusable = modal.querySelectorAll(
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable.length) return;
+    var first = focusable[0], last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+
+  function updateFocus() {
+    var hash = location.hash;
+    var modal = hash.endsWith("-modal") ? document.getElementById(hash.slice(1)) : null;
+    if (modal) {
+      if (lastFocus !== document.activeElement) lastFocus = document.activeElement;
+      var first = modal.querySelector(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (first) first.focus();
+      var handler = function(e) { trapFocus(e, modal); };
+      document.addEventListener("keydown", handler);
+      modal.addEventListener("transitionend", function() { document.removeEventListener("keydown", handler); }, { once: true });
+    } else if (lastFocus) {
+      lastFocus.focus();
+      lastFocus = null;
+    }
+  }
+
+  function isTyping() {
+    var t = document.activeElement;
+    return t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t?.isContentEditable;
+  }
+
+  function onKeydown(e) {
+    if (e.key === "Escape") {
+      if (chordPending) { clearChord(); return; }
+      if (location.hash.endsWith("-modal")) { location.hash = "#!"; return; }
+    }
+
+    if (isTyping()) { clearChord(); return; }
+
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === "u" || e.key === "U") {
+        e.preventDefault();
+        var unavailable = document.documentElement.hasAttribute("data-banned") ||
+          document.documentElement.hasAttribute("data-backend-offline");
+        if (unavailable) {
+          var dropzone = document.querySelector("[data-drop-zone]");
+          if (dropzone) {
+            dropzone.classList.remove("drop-zone--shake");
+            void dropzone.offsetWidth;
+            dropzone.classList.add("drop-zone--shake");
+            dropzone.addEventListener("animationend", function() {
+              dropzone.classList.remove("drop-zone--shake");
+            }, { once: true });
+          }
+          return;
+        }
+        var input = document.getElementById("dropzone-input");
+        if (input) {
+          // In app mode, simulate a dropzone click to delegate to device file picker
+          if (window.__juiceboxAppMode) {
+            var dropzone = document.querySelector("[data-drop-zone]");
+            if (dropzone) {
+              dropzone.click();
+            }
+          } else {
+            input.value = "";
+            input.click();
+          }
+        }
+        return;
+      }
+      if (e.key === "c" || e.key === "C") {
+        var sel = window.getSelection()?.toString();
+        if (!sel) {
+          var copyBars = document.querySelectorAll(".copy-bar .copy-bar__url");
+          var lastUrlEl = copyBars.length ? copyBars[copyBars.length - 1] : null;
+          var fileUrl = lastUrlEl ? lastUrlEl.textContent : null;
+          e.preventDefault();
+          navigator.clipboard.writeText(fileUrl || location.href).then(function() {
+            if (fileUrl) {
+              var copyBar = lastUrlEl.closest(".copy-bar");
+              if (copyBar) {
+                copyBar.classList.add("copy-bar--copied");
+                setTimeout(function() { copyBar.classList.remove("copy-bar--copied"); }, 2000);
+              }
+              showChordIndicator(["Copied!"]);
+              setTimeout(hideChordIndicator, 1500);
+            }
+          }).catch(function() {});
+        }
+        return;
+      }
+    }
+
+    var key = typeof e.key === "string" ? e.key.toLowerCase() : "";
+
+    if (chordPending) {
+      var path = chordPending.concat([key]);
+      if (chordTimer) { clearTimeout(chordTimer); chordTimer = null; }
+      var node = resolveChord(path);
+      if (typeof node === "function") {
+        chordPending = null;
+        hideChordIndicator();
+        e.preventDefault();
+        node();
+        return;
+      }
+      if (node) {
+        chordPending = path;
+        showChordIndicator(path.map(function(k) { return k.toUpperCase(); }));
+        chordTimer = setTimeout(clearChord, CHORD_TIMEOUT);
+        return;
+      }
+      clearChord();
+      return;
+    }
+
+    var first = CHORDS[key];
+    if (first && typeof first === "object") {
+      chordPending = [key];
+      showChordIndicator([key.toUpperCase()]);
+      chordTimer = setTimeout(clearChord, CHORD_TIMEOUT);
+      return;
+    }
+
+    if (e.key === "?") {
+      location.hash = "#shortcuts-modal";
+    }
+  }
+
+  function onClick(e) {
+    var target = e.target;
+    if (!target) return;
+    if (target.closest("[data-select-backdrop]")) {
+      var details = target.closest("[data-select-details]");
+      if (details) details.removeAttribute("open");
+      return;
+    }
+    document.querySelectorAll("details.select-details[open]").forEach(function(d) {
+      if (!d.contains(target)) d.removeAttribute("open");
+    });
+  }
+
+  function init() {
+    chordEl = document.getElementById("chord-indicator");
+    chordKeysEl = chordEl ? chordEl.querySelector(".chord-indicator__keys") : null;
+    redirectToSavedLocale();
+    saveLanguageOnNav();
+    initShareCopy();
+    initShareNative();
+    updateFocus();
+  }
+
+  document.addEventListener("keydown", onKeydown);
+  document.addEventListener("click", onClick);
+  window.addEventListener("hashchange", updateFocus);
+  document.addEventListener("astro:page-load", init);
+  init();
+})();
+</script>
+
+<script>
+  import { initPairModal } from "../lib/pair";
+  document.addEventListener("astro:page-load", initPairModal);
+  initPairModal();
+</script>

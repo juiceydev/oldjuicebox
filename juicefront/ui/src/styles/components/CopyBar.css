@@ -1,0 +1,267 @@
+
+.copy-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background-color: var(--juice-900);
+  border: 1px solid var(--juice-700);
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  color: var(--juice-300);
+  font-family: "General", "Unifont", monospace;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  text-align: left;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.copy-bar:hover {
+  border-color: var(--juice-600);
+  background-color: var(--juice-800);
+  color: var(--juice-200);
+}
+
+.copy-bar:hover .copy-bar__copy-icon {
+  color: var(--juice-300);
+}
+
+.copy-bar:active {
+  transform: scale(0.98);
+  background-color: var(--juice-950);
+}
+
+.copy-bar--copied {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.copy-bar--copied .copy-bar__copy-icon {
+  color: #10b981;
+}
+
+.copy-bar__text-wrapper {
+  flex-grow: 1;
+  overflow: hidden;
+  display: grid;
+  grid-template-areas: "text";
+  align-items: center;
+  min-width: 0;
+}
+
+.copy-bar__url,
+.copy-bar__copied-text {
+  grid-area: text;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.copy-bar__url {
+  opacity: 1;
+  transform: translateY(0);
+  color: var(--juice-400);
+  font-size: 16px;
+}
+
+.copy-bar--copied .copy-bar__url {
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
+.copy-bar__copied-text {
+  opacity: 0;
+  transform: translateY(100%);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #10b981;
+  font-size: 16px;
+}
+
+.copy-bar--copied .copy-bar__copied-text {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.copy-bar__copy-icon {
+  color: var(--juice-500);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+/* Copy bar wrapper: holds copy bar + edit button side by side */
+.copy-bar-wrapper {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 0.75rem;
+}
+
+.copy-bar-wrapper .copy-bar {
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 0;
+  border-radius: 0.5rem 0 0 0.5rem;
+}
+
+/* Edit button (pencil icon) right of the copy bar */
+.copy-bar-edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 0.625rem;
+  flex-shrink: 0;
+  background-color: var(--juice-900);
+  border: 1px solid var(--juice-700);
+  border-left: none;
+  border-radius: 0 0.5rem 0.5rem 0;
+  color: var(--juice-400);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+  text-decoration: none;
+}
+
+.copy-bar-edit:hover {
+  border-color: var(--juice-600);
+  background-color: var(--juice-800);
+  color: var(--juice-200);
+}
+
+.copy-bar-edit:active {
+  background-color: var(--juice-950);
+}
+
+.copy-bar-edit__icon {
+  color: inherit;
+}
+
+/* QR button (qr-code icon) next to the copy bar -- same look as the edit button */
+.copy-bar-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 0.625rem;
+  flex-shrink: 0;
+  background-color: var(--juice-900);
+  border: 1px solid var(--juice-700);
+  border-left: none;
+  border-radius: 0;
+  color: var(--juice-400);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+  text-decoration: none;
+}
+
+/* QR is the last action when there is no edit button (e.g. rename disabled) */
+.copy-bar-wrapper .copy-bar-qr:last-child {
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.copy-bar-qr:hover {
+  border-color: var(--juice-600);
+  background-color: var(--juice-800);
+  color: var(--juice-200);
+}
+
+.copy-bar-qr:active {
+  background-color: var(--juice-950);
+}
+
+.copy-bar-qr:focus-visible {
+  outline: 2px solid var(--orange-400);
+  outline-offset: 2px;
+}
+
+.copy-bar-qr__icon {
+  color: inherit;
+}
+
+/* Rename modal form styles */
+.rename-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.rename-input {
+  width: 100%;
+  font-family: "General", "Unifont", monospace;
+}
+
+.rename-input-group {
+  display: flex;
+  align-items: center;
+  background-color: var(--juice-800);
+  border: 1px solid var(--juice-700);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.rename-input-group:focus-within {
+  border-color: var(--orange-500);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.rename-input-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0 0.75rem 0.75rem;
+  color: var(--juice-400);
+  font-family: "General", "Unifont", monospace;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.rename-input-group .rename-input {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  padding-left: 0.25rem;
+  box-shadow: none;
+}
+
+.rename-input-group .rename-input:focus {
+  outline: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.rename-error {
+  color: var(--red-500, #ef4444);
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.rename-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}

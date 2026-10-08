@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["escape","feedback_submit_handler","fmt_bytes","page","report_form_handler","report_submit_handler","upload_confirmation_html","wants_html"],"struct":["DeleteForm","FeedbackForm","ReportForm"]};

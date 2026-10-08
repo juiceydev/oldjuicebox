@@ -1,0 +1,18 @@
+[Unit]
+Description=JuiceBox Bun SABR-fetch sidecar (secondary, direct residential egress)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bunfetch
+Group=bunfetch
+WorkingDirectory=/var/lib/bun-fetch
+EnvironmentFile=/var/lib/bun-fetch/bun-fetch.env
+ExecStart=/usr/local/bin/bun server.ts
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

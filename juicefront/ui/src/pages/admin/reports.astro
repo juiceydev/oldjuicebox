@@ -1,0 +1,245 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout title="Reports - Admin - Juicebox">
+    <h1>Reports</h1>
+    <p><a href="/admin">Back to Admin Panel</a></p>
+
+    <div class="admin-toolbar">
+        <input type="text" id="search-input" placeholder="Search URL, reason, details, email..." />
+        <select id="sort-select">
+            <option value="created_at">Time</option>
+            <option value="id">ID</option>
+            <option value="reason">Reason</option>
+        </select>
+        <select id="dir-select">
+            <option value="desc">Newest first</option>
+            <option value="asc">Oldest first</option>
+        </select>
+        <select id="filter-reason">
+            <option value="">All reasons</option>
+            <option value="malware">Malware</option>
+            <option value="illegal">Illegal content</option>
+            <option value="copyright">Copyright</option>
+            <option value="spam">Spam</option>
+            <option value="inappropriate">Inappropriate</option>
+            <option value="other">Other</option>
+        </select>
+        <button class="btn btn-primary" id="search-btn">Search</button>
+    </div>
+
+    <div id="reports-list"><p>Loading...</p></div>
+    <div class="admin-status" id="reports-status"></div>
+</AdminLayout>
+
+<script>
+    var PAGE = 50;
+    var allReports = [];
+    var displayedCount = 0;
+    var currentTotal = 0;
+
+    function formatTime(sec) {
+        return new Date(sec * 1000).toLocaleString();
+    }
+
+    function esc(s) {
+        var d = document.createElement("div");
+        d.appendChild(document.createTextNode(s));
+        return d.innerHTML;
+    }
+
+    function buildParams() {
+        var q = document.getElementById("search-input").value.trim();
+        var sort = document.getElementById("sort-select").value;
+        var dir = document.getElementById("dir-select").value;
+        return { q: q, sort: sort, dir: dir, offset: 0, limit: PAGE };
+    }
+
+    function filterByReason(reports) {
+        var reason = document.getElementById("filter-reason").value;
+        if (!reason) return reports;
+        return reports.filter(function (r) { return r.reason === reason; });
+    }
+
+    function renderRows(reports) {
+        var html = "";
+        for (var i = 0; i < reports.length; i++) {
+            var r = reports[i];
+            var actions = '<a href="' + esc(r.file_url) + '" target="_blank" rel="noopener noreferrer">Visit</a>';
+            if (r.reporter_ip_hash) {
+                actions += ' / <a href="#" data-ban-link data-ban-hash="' + esc(r.reporter_ip_hash) + '" data-report-id="' + r.id + '">Ban IP</a>';
+            }
+            actions += ' / <a href="#" data-delete-link data-report-id="' + r.id + '">Delete</a>';
+
+            html +=
+                '<tr data-report-id="' + r.id + '">' +
+                "<td>" + r.id + "</td>" +
+                "<td nowrap>" + formatTime(r.created_at) + "</td>" +
+                "<td>" + esc(r.reason) + "</td>" +
+                '<td><a href="' + esc(r.file_url) + '" target="_blank" rel="noopener noreferrer">' + esc(r.file_url) + "</a></td>" +
+                "<td>" + esc(r.details || "???") + "</td>" +
+                "<td>" + esc(r.reporter_ip || "???") + "</td>" +
+                "<td>" + esc(r.reporter_ip_hash || "???") + "</td>" +
+                "<td>" + esc(r.email || "???") + "</td>" +
+                "<td nowrap>" + actions + "</td></tr>";
+        }
+        return html;
+    }
+
+    function updateStatus() {
+        var statusEl = document.getElementById("reports-status");
+        if (!statusEl) return;
+        var filtered = filterByReason(allReports);
+        if (currentTotal > allReports.length) {
+            statusEl.textContent = "Showing " + Math.min(displayedCount, filtered.length) + " of " + filtered.length + " matched (total: " + currentTotal + ")";
+        } else {
+            statusEl.textContent = filtered.length + " report" + (filtered.length !== 1 ? "s" : "");
+        }
+    }
+
+    function renderTable() {
+        var listEl = document.getElementById("reports-list");
+        if (!listEl) return;
+        var filtered = filterByReason(allReports);
+        var toShow = filtered.slice(0, displayedCount);
+        if (!toShow.length && !allReports.length) {
+            listEl.innerHTML = "<p>No reports yet.</p>";
+            document.getElementById("reports-status").textContent = "";
+            return;
+        }
+        var html = '<div class="table-wrap"><table>' +
+            '<thead><tr>' +
+            '<th>ID</th><th>Time</th><th>Reason</th><th>URL</th>' +
+            '<th>Details</th><th>Reporter IP</th><th>IP Hash</th><th>Email</th><th>Actions</th>' +
+            "</tr></thead><tbody>" +
+            renderRows(toShow) +
+            "</tbody></table></div>";
+        if (displayedCount < filtered.length) {
+            html += '<div style="text-align:center;margin:0.75rem 0">' +
+                '<button class="btn btn-primary" id="load-more-btn">Load More (' +
+                displayedCount + " / " + filtered.length + ")</button></div>";
+        }
+        listEl.innerHTML = html;
+        var loadMoreBtn = document.getElementById("load-more-btn");
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener("click", function () {
+                displayedCount = Math.min(displayedCount + PAGE, filterByReason(allReports).length);
+                renderTable();
+                updateStatus();
+            });
+        }
+        updateStatus();
+    }
+
+    async function fetchData(params) {
+        var listEl = document.getElementById("reports-list");
+        var qs = "q=" + encodeURIComponent(params.q) +
+            "&sort=" + encodeURIComponent(params.sort) +
+            "&dir=" + encodeURIComponent(params.dir) +
+            "&offset=" + params.offset +
+            "&limit=" + params.limit;
+        try {
+            var res = await fetch("/api/admin/reports?" + qs);
+            if (!res.ok) {
+                if (res.status === 401) {
+                    listEl.innerHTML = '<p>Not authenticated. <a href="/admin/login">Login</a></p>';
+                } else {
+                    listEl.innerHTML = "<p>Error: " + res.status + "</p>";
+                }
+                return null;
+            }
+            return await res.json();
+        } catch (e) {
+            listEl.innerHTML = "<p>Failed to load reports.</p>";
+            return null;
+        }
+    }
+
+    async function doSearch() {
+        var params = buildParams();
+        allReports = [];
+        displayedCount = 0;
+        currentTotal = 0;
+        renderTable();
+        document.getElementById("reports-list").innerHTML = "<p>Loading...</p>";
+
+        var result = await fetchData(params);
+        if (!result) return;
+        allReports = result.items;
+        currentTotal = result.total;
+        displayedCount = Math.min(PAGE, allReports.length);
+        renderTable();
+    }
+
+    async function init() {
+        var listEl = document.getElementById("reports-list");
+        if (!listEl) return;
+
+        listEl.addEventListener("click", function (e) {
+            var link = e.target.closest("[data-delete-link]");
+            if (link) {
+                e.preventDefault();
+                var id = link.getAttribute("data-report-id");
+                if (id) deleteReport(parseInt(id, 10));
+                return;
+            }
+            var banLink = e.target.closest("[data-ban-link]");
+            if (banLink) {
+                e.preventDefault();
+                var hash = banLink.getAttribute("data-ban-hash");
+                var reportId = banLink.getAttribute("data-report-id");
+                if (hash) banIp(hash, parseInt(reportId, 10));
+            }
+        });
+
+        document.getElementById("search-btn").addEventListener("click", doSearch);
+        document.getElementById("search-input").addEventListener("keydown", function (e) {
+            if (e.key === "Enter") doSearch();
+        });
+        document.getElementById("sort-select").addEventListener("change", doSearch);
+        document.getElementById("dir-select").addEventListener("change", doSearch);
+        document.getElementById("filter-reason").addEventListener("change", function () {
+            displayedCount = Math.min(PAGE, filterByReason(allReports).length);
+            renderTable();
+        });
+
+        await doSearch();
+    }
+
+    async function deleteReport(id) {
+        if (!confirm("Delete report #" + id + "?")) return;
+        try {
+            var res = await fetch("/api/admin/report/" + encodeURIComponent(id), { method: "DELETE" });
+            if (res.ok) {
+                allReports = allReports.filter(function (r) { return r.id !== id; });
+                displayedCount = Math.min(displayedCount, filterByReason(allReports).length);
+                renderTable();
+                updateStatus();
+            } else {
+                var body = await res.text();
+                alert("Delete failed: " + (body || res.status));
+            }
+        } catch (e) {
+            alert("Delete failed: " + e.message);
+        }
+    }
+
+    async function banIp(hash, reportId) {
+        if (!hash) return;
+        if (!confirm("Ban IP with hash " + hash + "?")) return;
+        try {
+            var res = await fetch("/api/admin/bans", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ hash: hash, reason: "Reported content (report #" + reportId + ")" }),
+            });
+            if (res.ok) alert("IP with hash " + hash + " has been banned.");
+            else alert("Ban failed: " + (await res.text() || res.status));
+        } catch (e) {
+            alert("Ban failed: " + e.message);
+        }
+    }
+
+    init();
+</script>

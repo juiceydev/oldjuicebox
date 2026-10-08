@@ -1,0 +1,123 @@
+.upload-stack:has(.announcement-banner) .upload-card {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin-top: 0;
+}
+
+.announcement-banner {
+  position: relative;
+  border-radius: 0.5rem 0.5rem 0 0;
+  overflow: hidden;
+  background: var(--juice-900);
+  border: 1px solid var(--juice-800);
+  border-bottom: none;
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.upload-stack:has(.announcement-banner) .announcement-banner {
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.announcement-banner__body {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.announcement-banner__icon {
+  flex-shrink: 0;
+  color: white;
+  filter: brightness(0) invert(1);
+  width: 24px;
+  height: 24px;
+}
+
+.announcement-banner__message {
+  flex: 1;
+  color: var(--juice-200);
+  font-size: 0.8rem;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.announcement-banner__link {
+  flex-shrink: 0;
+  color: var(--orange-400);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: color 0.15s;
+}
+
+.announcement-banner__link:hover {
+  color: var(--orange-500);
+  text-decoration: underline;
+}
+
+.announcement-banner__link:focus-visible {
+  outline: 2px solid var(--orange-400);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.announcement-banner__stripes {
+  position: absolute;
+  top: 0;
+  left: -20px;
+  right: -20px;
+  height: 8px;
+  pointer-events: none;
+  will-change: transform;
+  mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  animation: stripe-scroll 1.2s linear infinite;
+}
+
+@keyframes stripe-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(17px); }
+}
+
+.announcement-banner--info .announcement-banner__stripes {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(148, 163, 184, 0.35) 0px,
+      rgba(148, 163, 184, 0.35) 6px,
+      transparent 6px,
+      transparent 12px
+    );
+}
+
+.announcement-banner--warning .announcement-banner__stripes {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(249, 115, 22, 0.35) 0px,
+      rgba(249, 115, 22, 0.35) 6px,
+      transparent 6px,
+      transparent 12px
+    );
+}
+
+.announcement-banner--danger .announcement-banner__stripes {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(239, 68, 68, 0.35) 0px,
+      rgba(239, 68, 68, 0.35) 6px,
+      transparent 6px,
+      transparent 12px
+    );
+}
+
+.announcement-banner--danger .announcement-banner__link {
+  color: var(--red-400);
+}
+
+.announcement-banner--danger .announcement-banner__link:hover {
+  color: var(--red-500);
+}

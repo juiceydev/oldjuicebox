@@ -1,0 +1,31 @@
+/target/
+**/*.rs.bk
+*.pdb
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+.env.*
+!.env.example
+*.der
+*.key
